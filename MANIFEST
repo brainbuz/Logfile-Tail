@@ -1,0 +1,7 @@
+lib/Logfile/Read.pm
+Makefile.PL
+MANIFEST
+MANIFEST.SKIP
+t/1-use.t
+t/2-read.t
+t/3-error.t
