@@ -17,7 +17,13 @@ and later in different process
 
 	my $file = new Logfile::Read('/var/log/messages');
 
-and continue reading where we've left out the last time.
+and continue reading where we've left out the last time. Also possible
+is to explicitly save the current position:
+
+	my $file = new Logfile::Read('/var/log/messages',
+		{ autocommit => 0 });
+	my $line = $file->getline();
+	$file->commit();
 
 =cut
 
@@ -51,6 +57,12 @@ sub open {
 	my $self = shift;
 
 	my $filename = shift;
+	if (@_ and ref $_[-1] eq 'HASH') {
+		${ *$self }->{opts} = pop @_;
+	}
+	if (not exists ${ *$self }->{opts}{autocommit}) {
+		${ *$self }->{opts}{autocommit} = 1;
+	}
 
 	my $fh = new IO::File;
 	$fh->open($filename, @_) or return;
@@ -114,9 +126,8 @@ sub _save_offset_to_status {
 
 sub _close_status {
 	my ($self, $offset) = @_;
-	$self->_save_offset_to_status($offset);
 	my $status_fh = delete ${ *$self }->{status_fh};
-	$status_fh->close();
+	$status_fh->close() if defined $status_fh;
 }
 
 sub getline {
@@ -141,14 +152,21 @@ sub getlines {
 	@out;
 }
 
+sub commit {
+	my $self = shift;
+	my $fh = ${ *$self }->{_fh};
+	my $offset = $fh->tell;
+	$self->_save_offset_to_status($offset);
+}
+
 sub close {
 	my $self = shift;
-	my $fh = delete ${ *$self }->{_fh};
-	if ($fh) {
-		my $offset = $fh->tell;
-		$self->_close_status($offset);
-		$fh->close();
+	if (${ *$self }->{opts}{autocommit}) {
+		$self->commit();
 	}
+	$self->_close_status();
+	my $fh = delete ${ *$self }->{_fh};
+	$fh->close() if defined $fh;
 }
 
 sub TIEHANDLE() {
@@ -210,9 +228,9 @@ file we've read the last time, that the file was not recycled;
 
 =item new()
 
-=item new( FILENAME [,MODE [,PERMS]] )
+=item new( FILENAME [,MODE [,PERMS]], [ { attributes } ] )
 
-=item new( FILENAME, IOLAYERS )
+=item new( FILENAME, IOLAYERS, [ { attributes } ] )
 
 Constructor, creates new C<Logfile::Read> object. Like C<IO::File>,
 it passes any parameters to method C<open>; it actually creates
@@ -220,15 +238,36 @@ an C<IO::File> handle internally.
 
 Returns new object, or undef upon error.
 
-=item open( FILENAME [,MODE [,PERMS]] )
+=item open( FILENAME [,MODE [,PERMS]], [ { attributes } ] )
 
-=item open( FILENAME, IOLAYERS )
+=item open( FILENAME, IOLAYERS, [ { attributes } ] )
 
 Opens the file using C<IO::File>. If the file was read before, the
 offset where the reading left out the last time is read from an
 external file in the ./.logfile-read-status directory and seek is
 made to that offset, to continue reading at the last remembered
 position.
+
+Returns true, or undef upon error.
+
+The attributes are passed as an optional hashref of key => value
+pairs. The supported attribute is
+
+=over 4
+
+=item autocommit
+
+Value 1 (the default) means that position is saved when the object is
+closed via explicit close() call, or when it is destroyed.
+
+Value 0 means that no saving takes place; you need to save explicitly
+using the commit() method.
+
+=back
+
+=item commit()
+
+Explicitly save the current position.
 
 Returns true, or undef upon error.
 

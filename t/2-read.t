@@ -1,5 +1,5 @@
 
-use Test::More tests => 54;
+use Test::More tests => 86;
 
 use Logfile::Read ();
 use Digest::SHA ();
@@ -48,9 +48,18 @@ append_to_file('t/file', 'create file we would be reading',
 
 my $logfile1;
 ok(($logfile1 = new Logfile::Read('t/file')), 'open the file as logfile');
+check_status_file($status_filename,
+	"File [t/file] offset [0]\n",
+	'check that opening the logfile for the first time initiates the status file'
+);
 
 ok(($line = $logfile1->getline()), 'read the first line');
 is($line, "line 1\n", '  check the line');
+check_status_file($status_filename,
+	"File [t/file] offset [0]\n",
+	'check that offset stayed the same'
+);
+
 ok(($line = <$logfile1>), 'read the second line');
 is($line, "line 2\n", '  check the line');
 is(($line = $logfile1->getline()), undef, 'try to read at the end');
@@ -74,7 +83,7 @@ append_to_file('t/file', 'append three more lines',
 	'line 5', 'line 6', 'line 7');
 
 my $logfile2;
-ok(($logfile2 = new Logfile::Read('t/file')), 'open the file as logfile');
+ok(($logfile2 = new Logfile::Read('t/file', '<')), 'open the file as logfile');
 check_status_file($status_filename,
 	"File [t/file] offset [28]\n",
 	'check that the status file did not change'
@@ -95,10 +104,47 @@ check_status_file($status_filename,
 );
 
 is($logfile2->getline(), undef, 'getline on unopened object should fail');
-is($logfile2->close(), undef, 'close on unopened object should fail');
+is($logfile2->close(), '', 'close on unopened object should fail');
 check_status_file($status_filename,
 	"File [t/file] offset [35]\n",
 	'close on unopened logfile should not touch the status file'
+);
+
+ok(($logfile2 = new Logfile::Read('t/file', { autocommit => 0 })),
+	'open the file with autocommit 0');
+check_status_file($status_filename,
+	"File [t/file] offset [35]\n",
+	'no change to the status file'
+);
+ok(($line = $logfile2->getline()), 'read one line');
+is($line, "line 6\n", '  check the line');
+is($logfile2->close, 1, 'close the object');
+check_status_file($status_filename,
+	"File [t/file] offset [35]\n",
+	'check that no change was written to the status file'
+);
+
+ok(($logfile2 = new Logfile::Read('t/file', { autocommit => 0 })),
+	'open the file with autocommit 0 again');
+ok(($line = $logfile2->getline()), 'read one line');
+is($line, "line 6\n", '  check the line');
+check_status_file($status_filename,
+	"File [t/file] offset [35]\n",
+	'check that no change was written to the status file'
+);
+
+is($logfile2->commit(), 1, 'explicitly commit');
+check_status_file($status_filename,
+	"File [t/file] offset [42]\n",
+	'check that offset was committed'
+);
+
+ok(($line = $logfile2->getline()), 'read another line');
+is($line, "line 7\n", '  check the line');
+is($logfile2->close, 1, 'close the object');
+check_status_file($status_filename,
+	"File [t/file] offset [42]\n",
+	'check that no change was written to the status file since we did not commit explicitly'
 );
 
 local *FILE;
@@ -107,10 +153,10 @@ ok(tie(*FILE, 'Logfile::Read', 't/file'), 'tie glob to Logfile::Read');
 is(ref tied(*FILE), 'Logfile::Read', 'check the type');
 
 ok(($line = <FILE>), 'read the first line');
-is($line, "line 6\n", '  check the line');
+is($line, "line 7\n", '  check the line');
 is((close FILE), 1, 'close the handle');
 check_status_file($status_filename,
-	"File [t/file] offset [42]\n",
+	"File [t/file] offset [49]\n",
 	'and see status file updated'
 );
 
