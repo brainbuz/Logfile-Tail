@@ -28,6 +28,9 @@ our $VERSION = '0.1';
 
 use Symbol ();
 use IO::File ();
+use Digest::SHA ();
+use File::Spec ();
+use Fcntl qw( O_RDWR O_CREAT );
 
 sub new {
 	my $class = shift;
@@ -43,16 +46,77 @@ sub new {
 	return $self;
 }
 
+my $STATUS_SUBDIR = '.logfile-read-status';
 sub open {
 	my $self = shift;
+
+	my $filename = shift;
+
 	my $fh = new IO::File;
-	$fh->open(@_) or return;
+	$fh->open($filename, @_) or return;
+
 	${ *$self }->{_fh} = $fh;
+
+	my $offset = $self->_load_offset_from_status($filename);
+	return unless defined $offset;
+	$fh->seek($offset, 0);
 	1;
 }
 
 sub _fh {
 	${ *{$_[0]} }->{_fh};
+}
+
+sub _load_offset_from_status {
+	my ($self, $log_filename) = @_;
+	${ *$self }->{filename} = $log_filename;
+
+	my $status_filename = Digest::SHA::sha256_hex($log_filename);
+	my $status_path = File::Spec->catfile($STATUS_SUBDIR, $status_filename);
+	if (not -d $STATUS_SUBDIR) {
+		mkdir $STATUS_SUBDIR, 0775;
+	}
+	my $status_fh = new IO::File $status_path, O_RDWR | O_CREAT;
+	if (not defined $status_fh) {
+		warn "Error reading/creating status file [$status_path]\n";
+		return;
+	}
+	${ *$self }->{status_fh} = $status_fh;
+
+	my $status_line = <$status_fh>;
+	my $offset = 0;
+	if (defined $status_line) {
+		if (not $status_line =~ /^File \[(.+)\] offset \[(\d+)\]\n/) {
+			warn "Status file [$status_path] has bad format\n";
+			return;
+		}
+		my $check_filename = $1;
+		$offset = $2;
+		if ($check_filename ne $log_filename) {
+			warn "Status file [$status_path] is for file [$check_filename] while expected [$log_filename]\n";
+			return;
+		}
+	} else {
+		$self->_save_offset_to_status($offset);
+	}
+
+	return $offset;
+}
+
+sub _save_offset_to_status {
+	my ($self, $offset) = @_;
+	my $log_filename = ${ *$self }->{filename};
+	my $status_fh = ${ *$self }->{status_fh};
+	$status_fh->seek(0, 0);
+	$status_fh->printflush("File [$log_filename] offset [$offset]\n");
+	$status_fh->truncate($status_fh->tell);
+}
+
+sub _close_status {
+	my ($self, $offset) = @_;
+	$self->_save_offset_to_status($offset);
+	my $status_fh = delete ${ *$self }->{status_fh};
+	$status_fh->close();
 }
 
 sub getline {
@@ -81,6 +145,8 @@ sub close {
 	my $self = shift;
 	my $fh = delete ${ *$self }->{_fh};
 	if ($fh) {
+		my $offset = $fh->tell;
+		$self->_close_status($offset);
 		$fh->close();
 	}
 }
@@ -106,6 +172,11 @@ sub CLOSE() {
 	$self->close();
 }
 
+sub DESTROY() {
+	my $self = shift;
+	$self->close();
+}
+
 1;
 
 =head1 DESCRIPTION
@@ -115,19 +186,16 @@ They are generally only appended to. When parsing information from
 log files, it is important to only read each record / line once,
 both for performance and for accounting and statistics reasons.
 
-The C<Logfile::Read> class aims at providing an easy way to achieve
-the read-just-once processing of log files.
+The C<Logfile::Read> provides an easy way to achieve the
+read-just-once processing of log files.
 
-The module will remember for each file the position where it left
+The module remembers for each file the position where it left
 out the last time, in external status file, and upon next invocation
-seek to the last remembered position.
+it seeks to the remembered position.
 
 =head1 TO DO
 
-At this moment, the module is just a stub. The backlog / to do list
-includes:
-
-* store position in a status file, and use it upon the next open;
+The backlog / to do list includes:
 
 * use checksum to verify that we are indeed returning to the same
 file we've read the last time, that the file was not recycled;
@@ -147,7 +215,7 @@ file we've read the last time, that the file was not recycled;
 =item new( FILENAME, IOLAYERS )
 
 Constructor, creates new C<Logfile::Read> object. Like C<IO::File>,
-it passes any parameters to method C<open>; it actually created
+it passes any parameters to method C<open>; it actually creates
 an C<IO::File> handle internally.
 
 Returns new object, or undef upon error.
@@ -156,13 +224,18 @@ Returns new object, or undef upon error.
 
 =item open( FILENAME, IOLAYERS )
 
-Opens the file using C<IO::File>.
+Opens the file using C<IO::File>. If the file was read before, the
+offset where the reading left out the last time is read from an
+external file in the ./.logfile-read-status directory and seek is
+made to that offset, to continue reading at the last remembered
+position.
 
 Returns true, or undef upon error.
 
 =item close()
 
-Closes the internal filehandle.
+Closes the internal filehandle. It stores the current position
+in an external file in the ./.logfile-read-status directory.
 
 Returns true, or undef upon error.
 

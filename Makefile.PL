@@ -9,10 +9,14 @@ BEGIN {
 WriteMakefile(
 	NAME => 'Logfile::Read',
 	VERSION_FROM => 'lib/Logfile/Read.pm',
+	PREREQ_PM => {
+		'Digest::SHA' => 0,
+	},
 	clean => {
 		FILES => [
 			'cover_db',
 			't/file',
+			'.logfile-read-status',
 		],
 	},
 	dist => {
