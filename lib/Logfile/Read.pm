@@ -87,10 +87,16 @@ sub _load_offset_from_status {
 	if (not defined $status_filename) {
 		$status_filename = Digest::SHA::sha256_hex($log_filename);
 	}
-	my $status_path = File::Spec->catfile($STATUS_SUBDIR, $status_filename);
-	if (not -d $STATUS_SUBDIR) {
-		mkdir $STATUS_SUBDIR, 0775;
+	my $status_dir = ${ *$self }->{opts}{status_dir};
+	if (not defined $status_dir) {
+		$status_dir = $STATUS_SUBDIR;
+	} elsif ($status_dir eq '') {
+		$status_dir = '.';
 	}
+	if (not -d $status_dir) {
+		mkdir $status_dir, 0775;
+	}
+	my $status_path = File::Spec->catfile($status_dir, $status_filename);
 	my $status_fh = new IO::File $status_path, O_RDWR | O_CREAT;
 	if (not defined $status_fh) {
 		warn "Error reading/creating status file [$status_path]\n";
@@ -265,6 +271,13 @@ closed via explicit close() call, or when it is destroyed.
 
 Value 0 means that no saving takes place; you need to save explicitly
 using the commit() method.
+
+=item status_dir
+
+The attribute specifies the directory (or subdirectory of current
+directory) which is used to hold status files. By default,
+./.logfile-read-status directory is used. To store the status
+files in the current directory, pass empty string or dot (.).
 
 =item status_file
 

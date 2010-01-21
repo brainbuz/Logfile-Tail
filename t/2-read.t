@@ -1,4 +1,4 @@
-use Test::More tests => 93;
+use Test::More tests => 114;
 
 use Logfile::Read ();
 use Digest::SHA ();
@@ -31,7 +31,7 @@ sub check_status_file ($$$) {
 	ok(close(CHECK), '  and close it again');
 }
 
-is(system('rm', '-rf', 't/file', '.logfile-read-status'), 0, 'remove old data');
+is(system('rm', '-rf', 't/file', '.logfile-read-status', '.logfile-test3', 'logfile-status-file'), 0, 'remove old data');
 
 my $status_filename = '.logfile-read-status/'
 	. Digest::SHA::sha256_hex('t/file');
@@ -148,6 +148,39 @@ is((undef $logfile3), undef, 'undef the object');
 check_status_file('.logfile-read-status/logfile-status-file',
 	"File [t/file] offset [7]\n",
 	'see custom status file updated'
+);
+
+ok(($logfile3 = new Logfile::Read('t/file', {
+	status_dir => '', status_file => 'logfile-status-file'
+	})), 'open logfile with status_file attribute, and empty status_dir');
+ok(($line = <$logfile3>), 'read line from t/file');
+is($line, "line 1\n", '  should get the first one as we use different status file');
+is((undef $logfile3), undef, 'undef the object');
+check_status_file('logfile-status-file',
+	"File [t/file] offset [7]\n",
+	'check that the custom status file was updated'
+);
+
+ok(($logfile3 = new Logfile::Read('t/file', {
+	status_dir => '.', status_file => 'logfile-status-file'
+	})), 'open logfile with status_file attribute, and current status_dir');
+ok(($line = $logfile3->getline()), 'read line from t/file');
+is($line, "line 2\n", '  should get the first one as we use different status file');
+is(($logfile3 = undef), undef, 'undef the object');
+check_status_file('logfile-status-file',
+	"File [t/file] offset [14]\n",
+	'see that the custom status file was updated'
+);
+
+ok(($logfile3 = new Logfile::Read('t/file', {
+	status_dir => '.logfile-test3',
+	})), 'open logfile with status_dir attribute');
+ok(($line = <$logfile3>), 'read line from t/file');
+is($line, "line 1\n", '  should get the first one as we use different status file');
+is($logfile3->close(), 1, 'close the logfile');
+check_status_file('.logfile-test3/' . Digest::SHA::sha256_hex('t/file'),
+	"File [t/file] offset [7]\n",
+	'check custom status file updated'
 );
 
 

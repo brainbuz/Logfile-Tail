@@ -18,6 +18,7 @@ WriteMakefile(
 			't/file',
 			'.logfile-read-status',
 			'logfile-status-file',
+			'.logfile-test3',
 		],
 	},
 	dist => {
