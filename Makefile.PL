@@ -17,6 +17,7 @@ WriteMakefile(
 			'cover_db',
 			't/file',
 			'.logfile-read-status',
+			'logfile-status-file',
 		],
 	},
 	dist => {

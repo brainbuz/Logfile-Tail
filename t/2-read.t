@@ -1,5 +1,4 @@
-
-use Test::More tests => 86;
+use Test::More tests => 93;
 
 use Logfile::Read ();
 use Digest::SHA ();
@@ -138,6 +137,19 @@ check_status_file($status_filename,
 	"File [t/file] offset [42]\n",
 	'check that offset was committed'
 );
+
+my $logfile3;
+ok(($logfile3 = new Logfile::Read('t/file', {
+	status_file => 'logfile-status-file'
+	})), 'open logfile with status_file attribute');
+ok(($line = <$logfile3>), 'read line from t/file');
+is($line, "line 1\n", '  should get the first one as we use different status file');
+is((undef $logfile3), undef, 'undef the object');
+check_status_file('.logfile-read-status/logfile-status-file',
+	"File [t/file] offset [7]\n",
+	'see custom status file updated'
+);
+
 
 ok(($line = $logfile2->getline()), 'read another line');
 is($line, "line 7\n", '  check the line');

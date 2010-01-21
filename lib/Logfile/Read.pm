@@ -83,7 +83,10 @@ sub _load_offset_from_status {
 	my ($self, $log_filename) = @_;
 	${ *$self }->{filename} = $log_filename;
 
-	my $status_filename = Digest::SHA::sha256_hex($log_filename);
+	my $status_filename = ${ *$self }->{opts}{status_file};
+	if (not defined $status_filename) {
+		$status_filename = Digest::SHA::sha256_hex($log_filename);
+	}
 	my $status_path = File::Spec->catfile($STATUS_SUBDIR, $status_filename);
 	if (not -d $STATUS_SUBDIR) {
 		mkdir $STATUS_SUBDIR, 0775;
@@ -262,6 +265,11 @@ closed via explicit close() call, or when it is destroyed.
 
 Value 0 means that no saving takes place; you need to save explicitly
 using the commit() method.
+
+=item status_file
+
+The attribute specifies the name of the status file which is used to
+hold the offset. By default, SHA256 of the logfile filename is used.
 
 =back
 
