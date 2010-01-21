@@ -1,7 +1,10 @@
-use Test::More tests => 114;
+use Test::More tests => 124;
 
 use Logfile::Read ();
 use Digest::SHA ();
+use Cwd ();
+
+my $CWD = Cwd::getcwd();
 
 sub truncate_file ($) {
 	my $file = shift;
@@ -23,18 +26,20 @@ sub append_to_file ($$@) {
 	is(close(FILE), 1, '  and close the file');
 }
 
-sub check_status_file ($$$) {
+sub check_status_file ($$$;$) {
+	my ($status_file, $expected, $comment, $strict) = @_;
 	local *CHECK;
-	ok(open(CHECK, $_[0]), "open the status file $_[0]");
+	ok(open(CHECK, $status_file), "open the status file $status_file");
 	my $check_status = join '', <CHECK>;
-	is($check_status, $_[1], "  $_[2]");
+	$expected =~ s!^File \[!File [$CWD/! unless $strict;
+	is($check_status, $expected, "  $comment");
 	ok(close(CHECK), '  and close it again');
 }
 
 is(system('rm', '-rf', 't/file', '.logfile-read-status', '.logfile-test3', 'logfile-status-file'), 0, 'remove old data');
 
 my $status_filename = '.logfile-read-status/'
-	. Digest::SHA::sha256_hex('t/file');
+	. Digest::SHA::sha256_hex("$CWD/t/file");
 
 is((-f 't/file'), undef, 'sanity check, the log file should not exist');
 is((-f $status_filename), undef, '  and neither should the status file');
@@ -178,7 +183,7 @@ ok(($logfile3 = new Logfile::Read('t/file', {
 ok(($line = <$logfile3>), 'read line from t/file');
 is($line, "line 1\n", '  should get the first one as we use different status file');
 is($logfile3->close(), 1, 'close the logfile');
-check_status_file('.logfile-test3/' . Digest::SHA::sha256_hex('t/file'),
+check_status_file('.logfile-test3/' . Digest::SHA::sha256_hex($CWD . '/t/file'),
 	"File [t/file] offset [7]\n",
 	'check custom status file updated'
 );
@@ -204,4 +209,30 @@ check_status_file($status_filename,
 	"File [t/file] offset [49]\n",
 	'and see status file updated'
 );
+
+{
+no warnings;
+*Cwd::abs_path = sub { return '/' };
+}
+
+ok(($logfile3 = new Logfile::Read('t/file')), 'open logfile when abs_path is broken, returns root');
+check_status_file('.logfile-read-status/1f6245dd2a49af539a745de806a543a793a0a13316ae9c72b40d8abc671a390e',
+        "File [t/file] offset [0]\n",
+        'in this case, the relative file name is used',
+	1
+);
+is($logfile3 = undef, undef, 'undef the object');
+
+{
+no warnings;
+*Cwd::abs_path = sub { return '/bad/path' };
+}
+
+ok(($logfile3 = new Logfile::Read('t/file')), 'open logfile when abs_path is broken, returns nonexistent path');
+check_status_file('.logfile-read-status/1f6245dd2a49af539a745de806a543a793a0a13316ae9c72b40d8abc671a390e',
+        "File [t/file] offset [0]\n",
+        'in this case, the relative file name is used',
+	1
+);
+is($logfile3 = undef, undef, 'undef the object');
 

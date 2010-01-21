@@ -2,14 +2,18 @@
 use Test::More tests => 19;
 
 use Logfile::Read ();
+use Digest::SHA ();
+use Cwd ();
 
 my $logfile1;
 is(($logfile1 = new Logfile::Read('t/nonexistent')), undef,
 	'when opening nonexistent file, open should fail');
 
+my $status_filename = Digest::SHA::sha256_hex(Cwd::getcwd() . '/t/file');
+
 local *TMP;
 my $warning;
-ok(open(TMP, '>', '.logfile-read-status/1f6245dd2a49af539a745de806a543a793a0a13316ae9c72b40d8abc671a390e'),
+ok(open(TMP, '>', ".logfile-read-status/$status_filename"),
 	'clear the status file');
 ok((print TMP "File [strange] offset [145]\n"),
 	'  put bad logfile name to the status file');
@@ -20,10 +24,10 @@ is($warning = undef, undef, 'clear any warnings');
 is(($logfile1 = new Logfile::Read('t/file')), undef,
 	'try to open the log file when the status file points to different file');
 is($warning,
-	"Status file [.logfile-read-status/1f6245dd2a49af539a745de806a543a793a0a13316ae9c72b40d8abc671a390e] is for file [strange] while expected [t/file]\n",
+	"Status file [.logfile-read-status/$status_filename] is for file [strange] while expected [@{[ Cwd::getcwd() ]}/t/file]\n",
 	'check that warning was issued');
 
-ok(open(TMP, '>', '.logfile-read-status/1f6245dd2a49af539a745de806a543a793a0a13316ae9c72b40d8abc671a390e'),
+ok(open(TMP, '>', ".logfile-read-status/$status_filename"),
 	'clear the status file');
 ok((print TMP "Unexpected content\n"),
 	'  put content in bad format to the status file');
@@ -33,7 +37,7 @@ is($warning = undef, undef, 'clear any warnings');
 is(($logfile1 = new Logfile::Read('t/file')), undef,
 	'try to open the log file when the status file had garbage it in');
 is($warning,
-	"Status file [.logfile-read-status/1f6245dd2a49af539a745de806a543a793a0a13316ae9c72b40d8abc671a390e] has bad format\n",
+	"Status file [.logfile-read-status/$status_filename] has bad format\n",
 	'check that warning was issued');
 
 is(system('rm', '-rf', '.logfile-read-status'), 0,
@@ -46,6 +50,6 @@ is($warning = undef, undef, 'clear any warnings');
 is(($logfile1 = new Logfile::Read('t/file')), undef,
 	'disabling the status directory should cause opening of the log to fail');
 is($warning,
-	"Error reading/creating status file [.logfile-read-status/1f6245dd2a49af539a745de806a543a793a0a13316ae9c72b40d8abc671a390e]\n",
+	"Error reading/creating status file [.logfile-read-status/$status_filename]\n",
 	'check that warning was issued');
 

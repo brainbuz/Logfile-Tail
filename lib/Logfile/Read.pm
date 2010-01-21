@@ -37,6 +37,7 @@ use IO::File ();
 use Digest::SHA ();
 use File::Spec ();
 use Fcntl qw( O_RDWR O_CREAT );
+use Cwd ();
 
 sub new {
 	my $class = shift;
@@ -81,6 +82,12 @@ sub _fh {
 
 sub _load_offset_from_status {
 	my ($self, $log_filename) = @_;
+	my $abs_filename = Cwd::abs_path($log_filename);
+	my @abs_stat = stat $abs_filename;
+	if (defined $abs_stat[1] and (stat $log_filename)[1] == $abs_stat[1]) {
+		$log_filename = $abs_filename;
+	}
+
 	${ *$self }->{filename} = $log_filename;
 
 	my $status_filename = ${ *$self }->{opts}{status_file};
@@ -282,7 +289,8 @@ files in the current directory, pass empty string or dot (.).
 =item status_file
 
 The attribute specifies the name of the status file which is used to
-hold the offset. By default, SHA256 of the logfile filename is used.
+hold the offset. By default, SHA256 of the full (absolute) logfile
+filename is used as the status file name.
 
 =back
 

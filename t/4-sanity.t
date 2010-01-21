@@ -1,6 +1,10 @@
 use Test::More tests => 1;
 
 use File::Find ();
+use Digest::SHA ();
+use Cwd ();
+
+my $status_filename = Digest::SHA::sha256_hex(Cwd::getcwd() . '/t/file');
 
 my @files;
 
@@ -10,7 +14,7 @@ File::Find::find(sub { push @files, $File::Find::name }, glob(".logfile*"), glob
 is_deeply(\@files, [
 	'.logfile-read-status',
 	'.logfile-test3',
-	'.logfile-test3/1f6245dd2a49af539a745de806a543a793a0a13316ae9c72b40d8abc671a390e',
+	".logfile-test3/$status_filename",
 	'logfile-status-file',
 	], 'check that only so many files were created');
 
