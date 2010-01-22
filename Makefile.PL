@@ -11,6 +11,7 @@ WriteMakefile(
 	VERSION_FROM => 'lib/Logfile/Read.pm',
 	PREREQ_PM => {
 		'Digest::SHA' => 0,
+		'Test::More' => 0,
 	},
 	clean => {
 		FILES => [
