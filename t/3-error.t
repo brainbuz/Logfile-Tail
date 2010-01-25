@@ -1,5 +1,5 @@
 
-use Test::More tests => 19;
+use Test::More tests => 20;
 
 use Logfile::Read ();
 use Digest::SHA ();
@@ -52,4 +52,10 @@ is(($logfile1 = new Logfile::Read('t/file')), undef,
 is($warning,
 	"Error reading/creating status file [.logfile-read-status/$status_filename]\n",
 	'check that warning was issued');
+
+{
+no warnings;
+*IO::File::new = sub { return };
+}
+is(($logfile1 = new Logfile::Read('t/file')), undef, 'try to read logfile when IO::File is broken');
 

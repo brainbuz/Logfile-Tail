@@ -65,7 +65,7 @@ sub open {
 		${ *$self }->{opts}{autocommit} = 1;
 	}
 
-	my $fh = new IO::File;
+	my $fh = new IO::File or return;
 	$fh->open($filename, @_) or return;
 
 	${ *$self }->{_fh} = $fh;
