@@ -30,7 +30,7 @@ is to explicitly save the current position:
 use strict;
 use warnings FATAL => 'all';
 
-our $VERSION = '0.2';
+our $VERSION = '0.3';
 
 use Symbol ();
 use IO::File ();
@@ -54,6 +54,7 @@ sub new {
 }
 
 my $STATUS_SUBDIR = '.logfile-read-status';
+my $CHECK_LENGTH = 512;
 sub open {
 	my $self = shift;
 
@@ -69,10 +70,24 @@ sub open {
 	$fh->open($filename, @_) or return;
 
 	${ *$self }->{_fh} = $fh;
+	${ *$self }->{data_array} = [];
+	${ *$self }->{data_length} = 0;
 
-	my $offset = $self->_load_offset_from_status($filename);
+	my ($offset, $checksum) = $self->_load_offset_checksum_from_status($filename);
 	return unless defined $offset;
-	$fh->seek($offset, 0);
+
+	if ($self->_seek_to($offset)) {
+		my $verify_checksum = $self->_get_current_checksum();
+		if ($verify_checksum eq $checksum) {
+			return 1;
+		}
+	}
+	if ($offset > 0) {
+		$self->_seek_to(0);
+	}
+	if (${ *$self }->{opts}{autocommit}) {
+		$self->commit();
+	}
 	1;
 }
 
@@ -80,7 +95,36 @@ sub _fh {
 	${ *{$_[0]} }->{_fh};
 }
 
-sub _load_offset_from_status {
+sub _seek_to {
+	my ($self, $offset) = @_;
+
+	my $fh = $self->_fh;
+
+	my $offset_start = $offset - $CHECK_LENGTH;
+	$offset_start = 0 if $offset_start < 0;
+
+	${ *$self }->{data_array} = [ ];
+	${ *$self }->{data_length} = 0;
+
+	# no point in checking the return value, seek will
+	# go beyond the end of the file anyway
+	$fh->seek($offset_start, 0);
+
+	while ($offset - $offset_start > 0) {
+		my $buffer;
+		my $read = $fh->read($buffer, $offset - $offset_start);
+		last if $read <= 0;
+		$self->_push_to_data($buffer);
+		$offset_start += $read;
+	}
+	if ($offset_start == $offset) {
+		return 1;
+	} else {
+		return;
+	}
+}
+
+sub _load_offset_checksum_from_status {
 	my ($self, $log_filename) = @_;
 	my $abs_filename = Cwd::abs_path($log_filename);
 	my @abs_stat = stat $abs_filename;
@@ -112,32 +156,70 @@ sub _load_offset_from_status {
 	${ *$self }->{status_fh} = $status_fh;
 
 	my $status_line = <$status_fh>;
-	my $offset = 0;
+	my ($offset, $checksum) = (0, '');
 	if (defined $status_line) {
-		if (not $status_line =~ /^File \[(.+)\] offset \[(\d+)\]\n/) {
+		if (not $status_line =~ /^File \[(.+)\] offset \[(\d+)\] checksum \[([0-9a-z]+)\]\n/) {
 			warn "Status file [$status_path] has bad format\n";
 			return;
 		}
 		my $check_filename = $1;
 		$offset = $2;
+		$checksum = $3;
 		if ($check_filename ne $log_filename) {
 			warn "Status file [$status_path] is for file [$check_filename] while expected [$log_filename]\n";
 			return;
 		}
 	} else {
 		$self->_save_offset_to_status($offset);
+		$checksum = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
 	}
 
-	return $offset;
+	return ($offset, $checksum);
 }
 
 sub _save_offset_to_status {
 	my ($self, $offset) = @_;
 	my $log_filename = ${ *$self }->{filename};
 	my $status_fh = ${ *$self }->{status_fh};
+	my $checksum = $self->_get_current_checksum();
 	$status_fh->seek(0, 0);
-	$status_fh->printflush("File [$log_filename] offset [$offset]\n");
+	$status_fh->printflush("File [$log_filename] offset [$offset] checksum [$checksum]\n");
 	$status_fh->truncate($status_fh->tell);
+}
+
+sub _push_to_data {
+	my $self = shift;
+	my $chunk = shift;
+	if (length($chunk) >= $CHECK_LENGTH) {
+		${ *$self }->{data_array} = [ substr $chunk, -$CHECK_LENGTH ];
+		${ *$self }->{data_length} = $CHECK_LENGTH;
+		return;
+	}
+	my $data = ${ *$self }->{data_array};
+	my $data_length = ${ *$self }->{data_length};
+	push @$data, $chunk;
+	$data_length += length($chunk);
+	while ($data_length - length($data->[0]) >= $CHECK_LENGTH) {
+		$data_length -= length($data->[0]);
+		shift @$data;
+	}
+	${ *$self }->{data_length} = $data_length;
+}
+
+sub _get_current_checksum {
+	my $self = shift;
+	my $data_length = ${ *$self }->{data_length};
+	my $data = ${ *$self }->{data_array};
+	my $i = 0;
+	my $digest = new Digest::SHA('sha256');
+	if ($data_length > $CHECK_LENGTH) {
+		$digest->add(substr($data->[0], $data_length - $CHECK_LENGTH));
+		$i++;
+	}
+	for (; $i <= $#$data; $i++) {
+		$digest->add($data->[$i]);
+	}
+	return $digest->hexdigest();
 }
 
 sub _close_status {
@@ -147,9 +229,12 @@ sub _close_status {
 }
 
 sub getline {
-	my $fh = $_[0]->_fh;
+	my $self = shift;
+	my $fh = $self->_fh;
 	if (defined $fh) {
-		return $fh->getline();
+		my $line = $fh->getline();
+		$self->_push_to_data($line) if defined $line;
+		return $line;
 	} else {
 		return undef;
 	}
@@ -225,14 +310,15 @@ read-just-once processing of log files.
 
 The module remembers for each file the position where it left
 out the last time, in external status file, and upon next invocation
-it seeks to the remembered position.
+it seeks to the remembered position. It also stores checksum
+of 512 bytes before that position, and if the checksum does not
+match the file content the next time it is read, it assumes the
+log file was rotated / reused / truncated, and starts from
+the beginning of the file.
 
 =head1 TO DO
 
 The backlog / to do list includes:
-
-* use checksum to verify that we are indeed returning to the same
-file we've read the last time, that the file was not recycled;
 
 * support layers;
 
@@ -264,6 +350,12 @@ external file in the ./.logfile-read-status directory and seek is
 made to that offset, to continue reading at the last remembered
 position.
 
+If however checksum, which is also stored with the offset, does not
+match the current content of the file (512 bytes before the offset
+are checked), the module assumes that the file was rotated / reused
+/ truncated in the mean time since the last read, and will
+reset the offset to zero and start from the beginning of the file.
+
 Returns true, or undef upon error.
 
 The attributes are passed as an optional hashref of key => value
@@ -289,21 +381,23 @@ files in the current directory, pass empty string or dot (.).
 =item status_file
 
 The attribute specifies the name of the status file which is used to
-hold the offset. By default, SHA256 of the full (absolute) logfile
-filename is used as the status file name.
+hold the offset and SHA256 checksum of 512 bytes before the offset.
+By default, SHA256 of the full (absolute) logfile filename is used
+as the status file name.
 
 =back
 
 =item commit()
 
-Explicitly save the current position.
+Explicitly save the current position and checksum in the status file.
 
 Returns true, or undef upon error.
 
 =item close()
 
 Closes the internal filehandle. It stores the current position
-in an external file in the ./.logfile-read-status directory.
+and checksum in an external file in the ./.logfile-read-status
+directory.
 
 Returns true, or undef upon error.
 

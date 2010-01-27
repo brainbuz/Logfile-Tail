@@ -15,7 +15,7 @@ local *TMP;
 my $warning;
 ok(open(TMP, '>', ".logfile-read-status/$status_filename"),
 	'clear the status file');
-ok((print TMP "File [strange] offset [145]\n"),
+ok((print TMP "File [strange] offset [145] checksum [xxx]\n"),
 	'  put bad logfile name to the status file');
 ok(close(TMP), '    and close it');
 
