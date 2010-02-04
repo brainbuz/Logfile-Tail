@@ -30,7 +30,7 @@ is to explicitly save the current position:
 use strict;
 use warnings FATAL => 'all';
 
-our $VERSION = '0.3';
+our $VERSION = '0.4';
 
 use Symbol ();
 use IO::File ();
@@ -67,7 +67,24 @@ sub open {
 	}
 
 	my $fh = new IO::File or return;
-	$fh->open($filename, @_) or return;
+	$fh->open($filename, '<:raw') or return;
+
+	my $layers = $_[0];
+	if (defined $layers and $layers =~ /<:/) {
+		$layers =~ s!<:!<:scalar:!;
+	} else {
+		$layers = '<:scalar';
+	}
+
+	my $buffer = '';
+	*$self->{int_buffer} = \$buffer;
+	my $int_fh;
+	eval { open $int_fh, $layers, *$self->{int_buffer} };
+	if ($@) {
+		warn "$@\n";
+		return;
+	};
+	*$self->{int_fh} = $int_fh;
 
 	${ *$self }->{_fh} = $fh;
 	${ *$self }->{data_array} = [];
@@ -232,8 +249,13 @@ sub getline {
 	my $self = shift;
 	my $fh = $self->_fh;
 	if (defined $fh) {
-		my $line = $fh->getline();
-		$self->_push_to_data($line) if defined $line;
+		my $buffer_ref = *$self->{int_buffer};
+		my $ret;
+		$$buffer_ref = $fh->getline();
+		return if not defined $$buffer_ref;
+		$self->_push_to_data($$buffer_ref);
+		seek(*$self->{int_fh}, 0, 0);
+		my $line = *$self->{int_fh}->getline();
 		return $line;
 	} else {
 		return undef;
@@ -319,8 +341,6 @@ the beginning of the file.
 =head1 TO DO
 
 The backlog / to do list includes:
-
-* support layers;
 
 * support archived / rotated files.
 

@@ -1,4 +1,6 @@
-use Test::More tests => 180;
+use Test::More tests => 198;
+
+use utf8;
 
 use Logfile::Read ();
 use Digest::SHA ();
@@ -280,6 +282,30 @@ check_status_file($status_filename,
 	'check that the checksum got fixed by this open'
 );
 is($logfile2->close(), 1, 'close object');
+
+
+truncate_file('t/file');
+append_to_file('t/file', 'append lines with iso-8859-2 content',
+	"line 1: mali\350k\375 je\276e\350ek",
+	"line 2: \276lu\273ou\350k\375 k\371\362",
+);
+
+ok(($logfile3 = new Logfile::Read('t/file', '<:encoding(iso-8859-2)')),
+	'open the file with encoding(iso-8859-2)');
+check_status_file($status_filename,
+	"File [t/file] offset [0] checksum [e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855]\n",
+	'check that this open of shorter file reset the offset to zero'
+);
+ok(($line = $logfile3->getline()), 'read one line');
+is($line, "line 1: maličký ježeček\n", '  check the line');
+ok(($line = $logfile3->getline()), 'read the second line');
+is($line, "line 2: žluťoučký kůň\n", '  check the line');
+is(($line = $logfile3->getline()), undef, 'read at the end of the file');
+ok($logfile3->close, 'close the logfile');
+check_status_file($status_filename,
+	"File [t/file] offset [46] checksum [d6a4069c311cbf889c1c3c96845b13ac1b38d5b0fe1b8d1ddb9a20883b32dfd3]\n",
+	'check that the checksum was computed correctly'
+);
 
 
 {

@@ -1,5 +1,5 @@
 
-use Test::More tests => 20;
+use Test::More tests => 23;
 
 use Logfile::Read ();
 use Digest::SHA ();
@@ -51,6 +51,13 @@ is(($logfile1 = new Logfile::Read('t/file')), undef,
 	'disabling the status directory should cause opening of the log to fail');
 is($warning,
 	"Error reading/creating status file [.logfile-read-status/$status_filename]\n",
+	'check that warning was issued');
+
+is($warning = undef, undef, 'clear any warnings');
+is(($logfile1 = new Logfile::Read('t/file', '<:unknown')), undef,
+	'open unknown IO layer should fail');
+like($warning,
+	qr/^Unknown PerlIO layer "unknown"/,
 	'check that warning was issued');
 
 {
