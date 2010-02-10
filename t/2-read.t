@@ -1,4 +1,4 @@
-use Test::More tests => 198;
+use Test::More tests => 202;
 
 use utf8;
 
@@ -147,15 +147,21 @@ check_status_file($status_filename,
 
 my $logfile3;
 ok(($logfile3 = new Logfile::Read('t/file', {
-	status_file => 'logfile-status-file'
-	})), 'open logfile with status_file attribute');
+	status_file => 'logfile-status-file',
+	autocommit => 2,
+	})), 'open logfile with status_file attribute and autocommit 2');
 ok(($line = <$logfile3>), 'read line from t/file');
 is($line, "line 1\n", '  should get the first one as we use different status file');
-is((undef $logfile3), undef, 'undef the object');
 check_status_file('.logfile-read-status/logfile-status-file',
 	"File [t/file] offset [7] checksum [39d031a6c1c196352ec2aea7fb3dc91ff031888b841d140bc400baa403f2d4de]\n",
-	'see custom status file updated'
+	'see custom status file updated immediately after the read'
 );
+ok((@lines = <$logfile3>), 'read remaining lines from t/file');
+check_status_file('.logfile-read-status/logfile-status-file',
+	"File [t/file] offset [49] checksum [6489985fca9367561507a6a4b3accccaef57cd74529916ed4a135e2bda7f0ff2]\n",
+	'see custom status file updated immediately after the read'
+);
+is((undef $logfile3), undef, 'undef the object');
 
 ok(($logfile3 = new Logfile::Read('t/file', {
 	status_dir => '', status_file => 'logfile-status-file'

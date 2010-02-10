@@ -245,7 +245,7 @@ sub _close_status {
 	$status_fh->close() if defined $status_fh;
 }
 
-sub getline {
+sub _getline {
 	my $self = shift;
 	my $fh = $self->_fh;
 	if (defined $fh) {
@@ -262,15 +262,29 @@ sub getline {
 	}
 }
 
+sub getline {
+	my $self = shift;
+	my $ret = $self->_getline();
+	no warnings 'uninitialized';
+	if (${ *$self }->{opts}{autocommit} == 2) {
+		$self->commit();
+	}
+	return $ret;
+}
+
 sub getlines {
 	my $self = shift;
 	my @out;
 	while (1) {
-		my $l = $self->getline();
+		my $l = $self->_getline();
 		if (not defined $l) {
 			last;
 		}
 		push @out, $l;
+	}
+	no warnings 'uninitialized';
+	if (${ *$self }->{opts}{autocommit} == 2) {
+		$self->commit();
 	}
 	@out;
 }
@@ -385,11 +399,15 @@ pairs. The supported attribute is
 
 =item autocommit
 
-Value 1 (the default) means that position is saved when the object is
-closed via explicit close() call, or when it is destroyed.
-
 Value 0 means that no saving takes place; you need to save explicitly
 using the commit() method.
+
+Value 1 (the default) means that position is saved when the object is
+closed via explicit close() call, or when it is destroyed. The value
+is also saved upon the first open.
+
+Value 2 causes the position to be save in all cases as value 1,
+plus after each successful read.
 
 =item status_dir
 
