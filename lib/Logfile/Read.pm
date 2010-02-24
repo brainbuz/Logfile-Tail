@@ -66,7 +66,7 @@ sub open {
 		*$self->{opts}{autocommit} = 1;
 	}
 
-	my ($offset, $checksum) = $self->_load_offset_checksum_from_status($filename);
+	my ($archive, $offset, $checksum) = $self->_load_data_from_status($filename);
 	return unless defined $offset;
 
 	my $need_commit = *$self->{opts}{autocommit};
@@ -147,7 +147,7 @@ sub _seek_to {
 	}
 }
 
-sub _load_offset_checksum_from_status {
+sub _load_data_from_status {
 	my ($self, $log_filename) = @_;
 	my $abs_filename = Cwd::abs_path($log_filename);
 	my @abs_stat = stat $abs_filename;
@@ -179,22 +179,23 @@ sub _load_offset_checksum_from_status {
 	*$self->{status_fh} = $status_fh;
 
 	my $status_line = <$status_fh>;
-	my ($offset, $checksum) = (0, undef);
+	my ($offset, $checksum, $archive_filename) = (0, undef, undef);
 	if (defined $status_line) {
-		if (not $status_line =~ /^File \[(.+)\] offset \[(\d+)\] checksum \[([0-9a-z]+)\]\n/) {
+		if (not $status_line =~ /^File \[(.+)\] (?:archive \[(.+)\])?offset \[(\d+)\] checksum \[([0-9a-z]+)\]\n/) {
 			warn "Status file [$status_path] has bad format\n";
 			return;
 		}
 		my $check_filename = $1;
-		$offset = $2;
-		$checksum = $3;
+		$archive_filename = $2;
+		$offset = $3;
+		$checksum = $4;
 		if ($check_filename ne $log_filename) {
 			warn "Status file [$status_path] is for file [$check_filename] while expected [$log_filename]\n";
 			return;
 		}
 	}
 
-	return ($offset, $checksum);
+	return ($archive_filename, $offset, $checksum);
 }
 
 sub _save_offset_to_status {
