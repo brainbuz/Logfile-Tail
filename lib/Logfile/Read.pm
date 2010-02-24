@@ -66,8 +66,22 @@ sub open {
 		*$self->{opts}{autocommit} = 1;
 	}
 
-	my $fh = new IO::File or return;
-	$fh->open($filename, '<:raw') or return;
+	my ($offset, $checksum) = $self->_load_offset_checksum_from_status($filename);
+	return unless defined $offset;
+
+	my $need_commit = *$self->{opts}{autocommit};
+	if (not defined $checksum) {
+		$need_commit = 1;
+	}
+
+	my ($fh, $content) = $self->_open($filename, $offset);
+	return unless defined $fh;
+
+	if (not defined $checksum
+		or not defined $content
+		or $checksum ne Digest::SHA::sha256_hex($content)) {
+		$content = $self->_seek_to($fh, 0);
+	}
 
 	my $layers = $_[0];
 	if (defined $layers and $layers =~ /<:/) {
@@ -87,25 +101,23 @@ sub open {
 	*$self->{int_fh} = $int_fh;
 
 	*$self->{_fh} = $fh;
-	*$self->{data_array} = [];
-	*$self->{data_length} = 0;
+	*$self->{data_array} = [ $content ];
+	*$self->{data_length} = length $content;
 
-	my ($offset, $checksum) = $self->_load_offset_checksum_from_status($filename);
-	return unless defined $offset;
-
-	if ($self->_seek_to($offset)) {
-		my $verify_checksum = $self->_get_current_checksum();
-		if ($verify_checksum eq $checksum) {
-			return 1;
-		}
-	}
-	if ($offset > 0) {
-		$self->_seek_to(0);
-	}
-	if (*$self->{opts}{autocommit}) {
+	if ($need_commit) {
 		$self->commit();
 	}
 	1;
+}
+
+sub _open {
+	my ($self, $filename, $offset) = @_;
+	my $fh = new IO::File or return;
+	$fh->open($filename, '<:raw') or return;
+
+	my $content = $self->_seek_to($fh, $offset);
+
+	return($fh, $content);
 }
 
 sub _fh {
@@ -113,29 +125,23 @@ sub _fh {
 }
 
 sub _seek_to {
-	my ($self, $offset) = @_;
-
-	my $fh = $self->_fh;
+	my ($self, $fh, $offset) = @_;
 
 	my $offset_start = $offset - $CHECK_LENGTH;
 	$offset_start = 0 if $offset_start < 0;
-
-	*$self->{data_array} = [ ];
-	*$self->{data_length} = 0;
 
 	# no point in checking the return value, seek will
 	# go beyond the end of the file anyway
 	$fh->seek($offset_start, 0);
 
+	my $buffer = '';
 	while ($offset - $offset_start > 0) {
-		my $buffer;
-		my $read = $fh->read($buffer, $offset - $offset_start);
+		my $read = $fh->read($buffer, $offset - $offset_start, length($buffer));
 		last if $read <= 0;
-		$self->_push_to_data($buffer);
 		$offset_start += $read;
 	}
 	if ($offset_start == $offset) {
-		return 1;
+		return $buffer;
 	} else {
 		return;
 	}
@@ -173,7 +179,7 @@ sub _load_offset_checksum_from_status {
 	*$self->{status_fh} = $status_fh;
 
 	my $status_line = <$status_fh>;
-	my ($offset, $checksum) = (0, '');
+	my ($offset, $checksum) = (0, undef);
 	if (defined $status_line) {
 		if (not $status_line =~ /^File \[(.+)\] offset \[(\d+)\] checksum \[([0-9a-z]+)\]\n/) {
 			warn "Status file [$status_path] has bad format\n";
@@ -186,9 +192,6 @@ sub _load_offset_checksum_from_status {
 			warn "Status file [$status_path] is for file [$check_filename] while expected [$log_filename]\n";
 			return;
 		}
-	} else {
-		$self->_save_offset_to_status($offset);
-		$checksum = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
 	}
 
 	return ($offset, $checksum);

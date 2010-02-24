@@ -11,15 +11,30 @@ is(($logfile1 = new Logfile::Read('t/nonexistent')), undef,
 
 my $status_filename = Digest::SHA::sha256_hex(Cwd::getcwd() . '/t/file');
 
-local *TMP;
 my $warning;
+local $SIG{__WARN__} = sub { $warning = join '', @_; };
+
+is($warning = undef, undef, 'clear any warnings');
+is(($logfile1 = new Logfile::Read('t/file', '<:unknown')), undef,
+	'open unknown IO layer should fail');
+like($warning,
+	qr/^Unknown PerlIO layer "unknown"/,
+	'check that warning was issued');
+
+{
+no warnings;
+my $orig_new = \&IO::File::new;
+*IO::File::new = sub { if ((caller 1)[3] eq 'Logfile::Read::_open') { return; } goto $orig_new; };
+}
+is(($logfile1 = new Logfile::Read('t/file')), undef, 'try to read logfile when IO::File is broken');
+
+local *TMP;
 ok(open(TMP, '>', ".logfile-read-status/$status_filename"),
 	'clear the status file');
 ok((print TMP "File [strange] offset [145] checksum [xxx]\n"),
 	'  put bad logfile name to the status file');
 ok(close(TMP), '    and close it');
 
-local $SIG{__WARN__} = sub { $warning = join '', @_; };
 is($warning = undef, undef, 'clear any warnings');
 is(($logfile1 = new Logfile::Read('t/file')), undef,
 	'try to open the log file when the status file points to different file');
@@ -52,17 +67,4 @@ is(($logfile1 = new Logfile::Read('t/file')), undef,
 is($warning,
 	"Error reading/creating status file [.logfile-read-status/$status_filename]\n",
 	'check that warning was issued');
-
-is($warning = undef, undef, 'clear any warnings');
-is(($logfile1 = new Logfile::Read('t/file', '<:unknown')), undef,
-	'open unknown IO layer should fail');
-like($warning,
-	qr/^Unknown PerlIO layer "unknown"/,
-	'check that warning was issued');
-
-{
-no warnings;
-*IO::File::new = sub { return };
-}
-is(($logfile1 = new Logfile::Read('t/file')), undef, 'try to read logfile when IO::File is broken');
 
