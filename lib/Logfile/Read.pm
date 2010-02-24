@@ -60,10 +60,10 @@ sub open {
 
 	my $filename = shift;
 	if (@_ and ref $_[-1] eq 'HASH') {
-		${ *$self }->{opts} = pop @_;
+		*$self->{opts} = pop @_;
 	}
-	if (not exists ${ *$self }->{opts}{autocommit}) {
-		${ *$self }->{opts}{autocommit} = 1;
+	if (not exists *$self->{opts}{autocommit}) {
+		*$self->{opts}{autocommit} = 1;
 	}
 
 	my $fh = new IO::File or return;
@@ -86,9 +86,9 @@ sub open {
 	};
 	*$self->{int_fh} = $int_fh;
 
-	${ *$self }->{_fh} = $fh;
-	${ *$self }->{data_array} = [];
-	${ *$self }->{data_length} = 0;
+	*$self->{_fh} = $fh;
+	*$self->{data_array} = [];
+	*$self->{data_length} = 0;
 
 	my ($offset, $checksum) = $self->_load_offset_checksum_from_status($filename);
 	return unless defined $offset;
@@ -102,14 +102,14 @@ sub open {
 	if ($offset > 0) {
 		$self->_seek_to(0);
 	}
-	if (${ *$self }->{opts}{autocommit}) {
+	if (*$self->{opts}{autocommit}) {
 		$self->commit();
 	}
 	1;
 }
 
 sub _fh {
-	${ *{$_[0]} }->{_fh};
+	*{$_[0]}->{_fh};
 }
 
 sub _seek_to {
@@ -120,8 +120,8 @@ sub _seek_to {
 	my $offset_start = $offset - $CHECK_LENGTH;
 	$offset_start = 0 if $offset_start < 0;
 
-	${ *$self }->{data_array} = [ ];
-	${ *$self }->{data_length} = 0;
+	*$self->{data_array} = [ ];
+	*$self->{data_length} = 0;
 
 	# no point in checking the return value, seek will
 	# go beyond the end of the file anyway
@@ -149,13 +149,13 @@ sub _load_offset_checksum_from_status {
 		$log_filename = $abs_filename;
 	}
 
-	${ *$self }->{filename} = $log_filename;
+	*$self->{filename} = $log_filename;
 
-	my $status_filename = ${ *$self }->{opts}{status_file};
+	my $status_filename = *$self->{opts}{status_file};
 	if (not defined $status_filename) {
 		$status_filename = Digest::SHA::sha256_hex($log_filename);
 	}
-	my $status_dir = ${ *$self }->{opts}{status_dir};
+	my $status_dir = *$self->{opts}{status_dir};
 	if (not defined $status_dir) {
 		$status_dir = $STATUS_SUBDIR;
 	} elsif ($status_dir eq '') {
@@ -170,7 +170,7 @@ sub _load_offset_checksum_from_status {
 		warn "Error reading/creating status file [$status_path]\n";
 		return;
 	}
-	${ *$self }->{status_fh} = $status_fh;
+	*$self->{status_fh} = $status_fh;
 
 	my $status_line = <$status_fh>;
 	my ($offset, $checksum) = (0, '');
@@ -196,8 +196,8 @@ sub _load_offset_checksum_from_status {
 
 sub _save_offset_to_status {
 	my ($self, $offset) = @_;
-	my $log_filename = ${ *$self }->{filename};
-	my $status_fh = ${ *$self }->{status_fh};
+	my $log_filename = *$self->{filename};
+	my $status_fh = *$self->{status_fh};
 	my $checksum = $self->_get_current_checksum();
 	$status_fh->seek(0, 0);
 	$status_fh->printflush("File [$log_filename] offset [$offset] checksum [$checksum]\n");
@@ -208,25 +208,25 @@ sub _push_to_data {
 	my $self = shift;
 	my $chunk = shift;
 	if (length($chunk) >= $CHECK_LENGTH) {
-		${ *$self }->{data_array} = [ substr $chunk, -$CHECK_LENGTH ];
-		${ *$self }->{data_length} = $CHECK_LENGTH;
+		*$self->{data_array} = [ substr $chunk, -$CHECK_LENGTH ];
+		*$self->{data_length} = $CHECK_LENGTH;
 		return;
 	}
-	my $data = ${ *$self }->{data_array};
-	my $data_length = ${ *$self }->{data_length};
+	my $data = *$self->{data_array};
+	my $data_length = *$self->{data_length};
 	push @$data, $chunk;
 	$data_length += length($chunk);
 	while ($data_length - length($data->[0]) >= $CHECK_LENGTH) {
 		$data_length -= length($data->[0]);
 		shift @$data;
 	}
-	${ *$self }->{data_length} = $data_length;
+	*$self->{data_length} = $data_length;
 }
 
 sub _get_current_checksum {
 	my $self = shift;
-	my $data_length = ${ *$self }->{data_length};
-	my $data = ${ *$self }->{data_array};
+	my $data_length = *$self->{data_length};
+	my $data = *$self->{data_array};
 	my $i = 0;
 	my $digest = new Digest::SHA('sha256');
 	if ($data_length > $CHECK_LENGTH) {
@@ -241,7 +241,7 @@ sub _get_current_checksum {
 
 sub _close_status {
 	my ($self, $offset) = @_;
-	my $status_fh = delete ${ *$self }->{status_fh};
+	my $status_fh = delete *$self->{status_fh};
 	$status_fh->close() if defined $status_fh;
 }
 
@@ -266,7 +266,7 @@ sub getline {
 	my $self = shift;
 	my $ret = $self->_getline();
 	no warnings 'uninitialized';
-	if (${ *$self }->{opts}{autocommit} == 2) {
+	if (*$self->{opts}{autocommit} == 2) {
 		$self->commit();
 	}
 	return $ret;
@@ -283,7 +283,7 @@ sub getlines {
 		push @out, $l;
 	}
 	no warnings 'uninitialized';
-	if (${ *$self }->{opts}{autocommit} == 2) {
+	if (*$self->{opts}{autocommit} == 2) {
 		$self->commit();
 	}
 	@out;
@@ -291,18 +291,18 @@ sub getlines {
 
 sub commit {
 	my $self = shift;
-	my $fh = ${ *$self }->{_fh};
+	my $fh = *$self->{_fh};
 	my $offset = $fh->tell;
 	$self->_save_offset_to_status($offset);
 }
 
 sub close {
 	my $self = shift;
-	if (${ *$self }->{opts}{autocommit}) {
+	if (*$self->{opts}{autocommit}) {
 		$self->commit();
 	}
 	$self->_close_status();
-	my $fh = delete ${ *$self }->{_fh};
+	my $fh = delete *$self->{_fh};
 	$fh->close() if defined $fh;
 }
 
