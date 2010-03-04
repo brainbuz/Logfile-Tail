@@ -127,18 +127,10 @@ sub _open {
 	$fh->open($filename, '<:raw') or return;
 
 	if ($offset > 0) {
-		if (wantarray) {
-			my $content = $self->_seek_to($fh, $offset);
-			return ($fh, $content);
-		}
-		$self->_seek_to($fh, $offset);
-		return $fh;
+		my $content = $self->_seek_to($fh, $offset);
+		return ($fh, $content);
 	}
-	if (wantarray) {
-		return ($fh, '');
-	}
-	return $fh;
-
+	return ($fh, '');
 }
 
 sub _fh {
@@ -350,7 +342,7 @@ sub _getline {
 				# next one
 				if (defined *$self->{archive}) {
 					my $newer_archive = $self->_get_archive_newer(*$self->{archive});
-					$fh = $self->_open($filename . ( defined $newer_archive ? $newer_archive : '' ), 0);
+					($fh) = $self->_open($filename . ( defined $newer_archive ? $newer_archive : '' ), 0);
 					if (not defined $fh) {
 						return;
 					}
