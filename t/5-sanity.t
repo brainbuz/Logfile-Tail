@@ -5,6 +5,7 @@ use Digest::SHA ();
 use Cwd ();
 
 my $status_filename = Digest::SHA::sha256_hex(Cwd::getcwd() . '/t/file');
+my $status_filename_r = Digest::SHA::sha256_hex(Cwd::getcwd() . '/t/rotate1');
 
 my @files;
 
@@ -13,6 +14,7 @@ File::Find::find(sub { push @files, $File::Find::name }, glob(".logfile*"), glob
 
 is_deeply(\@files, [
 	'.logfile-read-status',
+	".logfile-read-status/$status_filename_r",
 	'.logfile-test3',
 	".logfile-test3/$status_filename",
 	'logfile-status-file',
