@@ -1,4 +1,4 @@
-use Test::More tests => 174;
+use Test::More tests => 188;
 
 use utf8;
 
@@ -83,11 +83,10 @@ for my $type qw( num date ) {
 	);
 
 	ok(($logfile = new Logfile::Read($file)), 'open the logfile again');
-	ok(($line = <$logfile>), 'read one line (second from the file)');
+	ok(($line = <$logfile>), 'read one line (second from the now-rotated file)');
 	is($line, "line 2.2\n", '  check the line');
-	rotate_file($file, $type);
 
-	ok(($line = <$logfile>), 'read one line (third from the now-rotated file)');
+	ok(($line = <$logfile>), 'read next line');
 	is($line, "line 2.3\n", '  check the line');
 	is($logfile->commit(), 1, 'commit to status file');
 
@@ -110,8 +109,6 @@ for my $type qw( num date ) {
 	);
 
 	rotate_file($file, $type);
-	append_to_file($file, 'put content to log file',
-		map "line 5.$_", 1 .. 5);
 
 	ok(($line = <$logfile>), 'read one more line');
 	is($line, "line 2.5\n", '  check the line');
@@ -130,13 +127,27 @@ for my $type qw( num date ) {
 
 	is($logfile->close(), 1, 'close the file');
 	check_status_file($status_filename,
-		"File [$file] archive [@{[ $type eq 'num' ? '.3' : '-20100102' ]}] offset [54] checksum [3fc745f588af1955a409bc1f1cf5aa666c08a19e3c6985eeb345c3921d256820]\n",
+		"File [$file] archive [@{[ $type eq 'num' ? '.2' : '-20100102' ]}] offset [54] checksum [3fc745f588af1955a409bc1f1cf5aa666c08a19e3c6985eeb345c3921d256820]\n",
 		'check that status file now has archive info'
 	);
-	ok(($logfile = new Logfile::Read($file)), 'and open again, to see processing of status file with archive info');
 
+	ok(($logfile = new Logfile::Read($file)), 'and open again, to see processing of status file with archive info');
+	ok(($line = <$logfile>), 'read one line');
+	is($line, "line 2.7\n", '  check the line');
+	is($logfile->close(), 1, 'close the file');
+
+	check_status_file($status_filename,
+		"File [$file] archive [@{[ $type eq 'num' ? '.2' : '-20100102' ]}] offset [63] checksum [a4cc5dafbe0afbfd90d19ee4bdfaca08edaa84765532e59edb6380e5cd0ebea3]\n",
+		'check the archive info'
+	);
+
+	rotate_file($file, $type);
+	append_to_file($file, 'put content to log file',
+		map "line 5.$_", 1 .. 5);
+
+	ok(($logfile = new Logfile::Read($file)), 'open again, now the archive info points to file which was rotated again');
 	my @lines = $logfile->getlines();
-	is(scalar(@lines), 1000, 'check number of lines we got');
+	is(scalar(@lines), 999, 'check number of lines we got');
 	is($lines[$#lines], "line 5.5\n", 'check the last line');
 
 	ok($logfile->close, 'close the log file');
