@@ -202,7 +202,7 @@ sub _load_data_from_status {
 	my $status_line = <$status_fh>;
 	my ($offset, $checksum, $archive_filename) = (0, undef, undef);
 	if (defined $status_line) {
-		if (not $status_line =~ /^File \[(.+)\] (?:archive \[(.+)\])?offset \[(\d+)\] checksum \[([0-9a-z]+)\]\n/) {
+		if (not $status_line =~ /^File \[(.+?)\] (?:archive \[(.+)\] )?offset \[(\d+)\] checksum \[([0-9a-z]+)\]\n/) {
 			warn "Status file [$status_path] has bad format\n";
 			return;
 		}

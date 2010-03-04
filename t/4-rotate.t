@@ -1,4 +1,4 @@
-use Test::More tests => 172;
+use Test::More tests => 174;
 
 use utf8;
 
@@ -128,12 +128,12 @@ for my $type qw( num date ) {
 	ok(($line = <$logfile>), 'read one line');
 	is($line, "line 2.6\n", '  check the line');
 
-	is($logfile->commit(), 1, 'commit to status file');
-
+	is($logfile->close(), 1, 'close the file');
 	check_status_file($status_filename,
 		"File [$file] archive [@{[ $type eq 'num' ? '.3' : '-20100102' ]}] offset [54] checksum [3fc745f588af1955a409bc1f1cf5aa666c08a19e3c6985eeb345c3921d256820]\n",
 		'check that status file now has archive info'
 	);
+	ok(($logfile = new Logfile::Read($file)), 'and open again, to see processing of status file with archive info');
 
 	my @lines = $logfile->getlines();
 	is(scalar(@lines), 1000, 'check number of lines we got');
