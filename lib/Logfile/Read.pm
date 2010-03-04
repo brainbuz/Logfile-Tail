@@ -68,19 +68,29 @@ sub open {
 
 	my ($archive, $offset, $checksum) = $self->_load_data_from_status($filename);
 	return unless defined $offset;
+	*$self->{archive} = $archive;
 
 	my $need_commit = *$self->{opts}{autocommit};
 	if (not defined $checksum) {
 		$need_commit = 1;
 	}
 
-	my ($fh, $content) = $self->_open($filename, $offset);
+	my ($fh, $content) = $self->_open(defined $archive ? $filename . $archive : $filename, $offset);
 	return unless defined $fh;
 
-	if (not defined $checksum
-		or not defined $content
-		or $checksum ne Digest::SHA::sha256_hex($content)) {
+	if (not defined $checksum) {
 		$content = $self->_seek_to($fh, 0);
+	} elsif (not defined $content
+		or $checksum ne Digest::SHA::sha256_hex($content)) {
+		my ($older_fh, $older_archive, $older_content) = $self->_get_archive_older($filename, $archive, $offset, $checksum);
+		if (defined $older_fh) {
+			$fh->close();
+			$fh = $older_fh;
+			$content = $older_content;
+			$archive = $older_archive;
+		} else {
+			$content = $self->_seek_to($fh, 0);
+		}
 	}
 
 	my $layers = $_[0];
@@ -103,6 +113,7 @@ sub open {
 	*$self->{_fh} = $fh;
 	*$self->{data_array} = [ $content ];
 	*$self->{data_length} = length $content;
+	*$self->{archive} = $archive;
 
 	if ($need_commit) {
 		$self->commit();
@@ -115,9 +126,19 @@ sub _open {
 	my $fh = new IO::File or return;
 	$fh->open($filename, '<:raw') or return;
 
-	my $content = $self->_seek_to($fh, $offset);
+	if ($offset > 0) {
+		if (wantarray) {
+			my $content = $self->_seek_to($fh, $offset);
+			return ($fh, $content);
+		}
+		$self->_seek_to($fh, $offset);
+		return $fh;
+	}
+	if (wantarray) {
+		return ($fh, '');
+	}
+	return $fh;
 
-	return($fh, $content);
 }
 
 sub _fh {
@@ -204,7 +225,8 @@ sub _save_offset_to_status {
 	my $status_fh = *$self->{status_fh};
 	my $checksum = $self->_get_current_checksum();
 	$status_fh->seek(0, 0);
-	$status_fh->printflush("File [$log_filename] offset [$offset] checksum [$checksum]\n");
+	my $archive_text = defined *$self->{archive} ? " archive [@{[ *$self->{archive} ]}]" : '';
+	$status_fh->printflush("File [$log_filename]$archive_text offset [$offset] checksum [$checksum]\n");
 	$status_fh->truncate($status_fh->tell);
 }
 
@@ -243,6 +265,62 @@ sub _get_current_checksum {
 	return $digest->hexdigest();
 }
 
+sub _get_archives {
+	my $self = shift;
+	my $filename = *$self->{filename};
+	my @date_archives = sort grep /^-[0-9]{8}$/,
+		map { substr($_, length($filename)) }
+		glob "$filename-*";
+	return @date_archives if @date_archives;
+	my @num_archives =
+		map { ".$_" }
+		sort { $b <=> $a }
+		grep { /^[0-9]+$/ }
+		map { substr($_, length($filename) + 1) }
+		glob "$filename.*";
+	return @num_archives;
+}
+
+sub _get_archive_older {
+	my ($self, $filename, $archive, $offset, $checksum) = @_;
+	# walk older archives and check if what we have now
+	# got rotated and became older archive
+	my @archives = $self->_get_archives();
+	if (defined $archive) {
+		for (my $i = $#archives; $i >= 0; $i--) {
+			if ($archives[$i] eq $archive) {
+				splice @archives, $i;
+				last;
+			}
+		}
+	}
+	for (my $i = $#archives; $i >= 0; $i--) {
+		my ($fh, $content) = $self->_open($filename . $archives[$i], $offset);
+		if (not defined $fh) {
+			next;
+		}
+		if (defined $content
+			and $checksum eq Digest::SHA::sha256_hex($content)) {
+			return ($fh, $archives[$i], $content);
+		}
+		$fh->close();
+	}
+	return;
+}
+
+sub _get_archive_newer {
+	my ($self, $start) = @_;
+	my @archives = $self->_get_archives();
+	if (defined $start) {
+		for (my $i = 0; $i < @archives; $i++) {
+			if ($archives[$i] eq $start) {
+				return $archives[$i + 1];
+			}
+		}
+	}
+	return @archives;
+}
+
 sub _close_status {
 	my ($self, $offset) = @_;
 	my $status_fh = delete *$self->{status_fh};
@@ -254,9 +332,54 @@ sub _getline {
 	my $fh = $self->_fh;
 	if (defined $fh) {
 		my $buffer_ref = *$self->{int_buffer};
-		my $ret;
+		DO_GETLINE:
+		my $ret = undef;
 		$$buffer_ref = $fh->getline();
-		return if not defined $$buffer_ref;
+		if (not defined $$buffer_ref) {
+			# we are at the end of the current file
+			# we need to check if the file was rotated
+			# in the meantime
+			my @fh_stat = stat($fh);
+			my $filename = *$self->{filename};
+			my @file_stat = stat($filename . ( defined *$self->{archive} ? *$self->{archive} : '' ));
+			if ($fh_stat[0] == $file_stat[0]
+				and $fh_stat[1] == $file_stat[1]) {
+				# our file was not rotated
+				# however, if our file is in fact
+				# a rotate file, we should go to the
+				# next one
+				if (defined *$self->{archive}) {
+					my $newer_archive = $self->_get_archive_newer(*$self->{archive});
+					$fh = $self->_open($filename . ( defined $newer_archive ? $newer_archive : '' ), 0);
+					if (not defined $fh) {
+						return;
+					}
+					*$self->{_fh}->close();
+					*$self->{_fh} = $fh;
+					*$self->{data_array} = [ '' ];
+					*$self->{data_length} = 0;
+					*$self->{archive} = $newer_archive;
+					goto DO_GETLINE;
+				}
+			} else {
+				# our file was rotated, or generally
+				# is no longer where it was when
+				# we started to read
+				my ($older_fh, $older_archive, $older_content)
+					= $self->_get_archive_older($filename, *$self->{archive}, $fh->tell, $self->_get_current_checksum);
+				if (not defined $older_fh) {
+					# we have lost the file / sync
+					return;
+				}
+				*$self->{_fh}->close();
+				*$self->{_fh} = $fh = $older_fh;
+				*$self->{data_array} = [ $older_content ];
+				*$self->{data_length} = length $older_content;
+				*$self->{archive} = $older_archive;
+				goto DO_GETLINE;
+			}
+			return;
+		}
 		$self->_push_to_data($$buffer_ref);
 		seek(*$self->{int_fh}, 0, 0);
 		my $line = *$self->{int_fh}->getline();
