@@ -1,4 +1,4 @@
-use Test::More tests => 188;
+use Test::More tests => 187;
 
 use utf8;
 
@@ -32,14 +32,17 @@ sub rotate_file {
 	truncate_file($file, "  trucate [$file] by writing nothing");
 }
 
-my $i = 1;
-for my $type qw( num date ) {
+is(system('rm', '-rf', glob('t/rotate*'), '.logfile-read-status'), 0, 'remove old files');
 
-	is(system('rm', '-rf', glob('t/rotate*'), '.logfile-read-status'), 0, 'remove old data');
+my $i = 0;
+for my $type qw( num date ) {
+	$i++;
 
 	my $file = "t/rotate$i";
 	my $status_filename = '.logfile-read-status/'
 		. Digest::SHA::sha256_hex("$CWD/$file");
+
+	unlink $status_filename;
 
 	is((-f $file), undef, 'sanity check, the log file should not exist');
 	is((-f $status_filename), undef, '  and neither should the status file');
