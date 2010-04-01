@@ -150,8 +150,7 @@ sub _seek_to {
 	my $buffer = '';
 	while ($offset - $offset_start > 0) {
 		my $read = $fh->read($buffer, $offset - $offset_start, length($buffer));
-		# $read is not defined for example when we try to read directory
-		last if not defined $read or $read <= 0;
+		last if $read <= 0;
 		$offset_start += $read;
 	}
 	if ($offset_start == $offset) {
@@ -342,9 +341,16 @@ sub _getline {
 				# a rotate file, we should go to the
 				# next one
 				if (defined *$self->{archive}) {
+					NEWER_ARCHIVE:
 					my $newer_archive = $self->_get_archive_newer(*$self->{archive});
 					($fh) = $self->_open($filename . ( defined $newer_archive ? $newer_archive : '' ), 0);
 					if (not defined $fh) {
+						if (defined $newer_archive) {
+							*$self->{data_array} = [ '' ];
+							*$self->{data_length} = 0;
+							*$self->{archive} = $newer_archive;
+							goto NEWER_ARCHIVE;
+						}
 						return;
 					}
 					*$self->{_fh}->close();

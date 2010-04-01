@@ -1,4 +1,4 @@
-use Test::More tests => 206;
+use Test::More tests => 207;
 
 use utf8;
 
@@ -167,23 +167,24 @@ my $status_filename = '.logfile-read-status/'
 is(system('rm', '-rf', glob('t/rotfail*'), $status_filename), 0, 'remove old rotfiles');
 
 append_to_file('t/rotfail', 'create new rotfail',
-        "Line 4");
+        "Line 5");
 append_to_file('t/rotfail.1', 'create rotfail.1',
-        "Line 3");
+        "Line 4");
 is(mkdir('t/rotfail.2'), 1, 'create rotfail.2 as directory');
 append_to_file('t/rotfail.3', 'create rotfail.3',
-        "Line 2");
-append_to_file('t/rotfail.4', 'create rotfail.4',
-        "Line 1");
+        "Line 3");
+is(symlink('nonexistent', 't/rotfail.4'), 1, 'rotfail.4 is a symlink which points nowhere');
+append_to_file('t/rotfail.5', 'create rotfail.5',
+        "Line 1", "Line 2");
 
 append_to_file($status_filename, 'set status file for t/rotfile',
-	"File [$CWD/t/rotfail] archive [.4] offset [7] checksum [3de22f9f20b5ff997cf08b76e7692d26e49ce7a649ea5a11ba9f835c8b7179a5]\n");
+	"File [$CWD/t/rotfail] archive [.5] offset [7] checksum [3de22f9f20b5ff997cf08b76e7692d26e49ce7a649ea5a11ba9f835c8b7179a5]\n");
 
 ok(($logfile = new Logfile::Read('t/rotfail')),
         'open the rotfail');
 
 my @lines = <$logfile>;
 is_deeply(\@lines, [
-        "Line 2\n", "Line 3\n", "Line 4\n",
-        ], 'check that we have read all lines, even if there is one bad archive (directory)');
+        "Line 2\n", "Line 3\n", "Line 4\n", "Line 5\n",
+        ], 'check that we have read all lines, even if archives are bad (directory, symlink)');
 
