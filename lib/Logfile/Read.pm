@@ -150,7 +150,8 @@ sub _seek_to {
 	my $buffer = '';
 	while ($offset - $offset_start > 0) {
 		my $read = $fh->read($buffer, $offset - $offset_start, length($buffer));
-		last if $read <= 0;
+		# $read is not defined for example when we try to read directory
+		last if not defined $read or $read <= 0;
 		$offset_start += $read;
 	}
 	if ($offset_start == $offset) {
