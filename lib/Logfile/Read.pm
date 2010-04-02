@@ -304,11 +304,9 @@ sub _get_archive_older {
 sub _get_archive_newer {
 	my ($self, $start) = @_;
 	my @archives = $self->_get_archives();
-	if (defined $start) {
-		for (my $i = 0; $i < @archives; $i++) {
-			if ($archives[$i] eq $start) {
-				return $archives[$i + 1];
-			}
+	for (my $i = 0; $i < @archives; $i++) {
+		if ($archives[$i] eq $start) {
+			return $archives[$i + 1];
 		}
 	}
 	return @archives;
