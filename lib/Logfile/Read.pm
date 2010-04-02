@@ -335,8 +335,7 @@ sub _getline {
 			my @fh_stat = stat($fh);
 			my $filename = *$self->{filename};
 			my @file_stat = stat($filename . ( defined *$self->{archive} ? *$self->{archive} : '' ));
-			if ($fh_stat[0] == $file_stat[0]
-				and $fh_stat[1] == $file_stat[1]) {
+			if ("@fh_stat[0, 1]" eq "@file_stat[0, 1]") {
 				# our file was not rotated
 				# however, if our file is in fact
 				# a rotate file, we should go to the
