@@ -80,7 +80,7 @@ sub open {
 		if (not defined $archive) {
 			return;
 		}
-		my ($older_fh, $older_archive, $older_content) = $self->_get_archive_older($filename, $archive, $offset, $checksum);
+		my ($older_fh, $older_archive, $older_content) = $self->_get_archive_older($archive, $offset, $checksum);
 		if (defined $older_fh) {
 			$fh = $older_fh;
 			$content = $older_content;
@@ -92,7 +92,7 @@ sub open {
 		$content = $self->_seek_to($fh, 0);
 	} elsif (not defined $content
 		or $checksum ne Digest::SHA::sha256_hex($content)) {
-		my ($older_fh, $older_archive, $older_content) = $self->_get_archive_older($filename, $archive, $offset, $checksum);
+		my ($older_fh, $older_archive, $older_content) = $self->_get_archive_older($archive, $offset, $checksum);
 		if (defined $older_fh) {
 			$fh->close();
 			$fh = $older_fh;
@@ -285,7 +285,7 @@ sub _get_archives {
 }
 
 sub _get_archive_older {
-	my ($self, $filename, $archive, $offset, $checksum) = @_;
+	my ($self, $archive, $offset, $checksum) = @_;
 	# walk older archives and check if what we have now
 	# got rotated and became older archive
 	my @archives = $self->_get_archives();
@@ -297,6 +297,7 @@ sub _get_archive_older {
 			}
 		}
 	}
+	my $filename = *$self->{filename};
 	for (my $i = $#archives; $i >= 0; $i--) {
 		my ($fh, $content) = $self->_open($filename . $archives[$i], $offset);
 		if (not defined $fh) {
@@ -356,7 +357,7 @@ sub _getline {
 				# is no longer where it was when
 				# we started to read
 				my ($older_fh, $older_archive, $older_content)
-					= $self->_get_archive_older($filename, *$self->{archive}, $fh->tell, $self->_get_current_checksum);
+					= $self->_get_archive_older(*$self->{archive}, $fh->tell, $self->_get_current_checksum);
 				if (not defined $older_fh) {
 					# we have lost the file / sync
 					return;
