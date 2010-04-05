@@ -1,4 +1,4 @@
-use Test::More tests => 230;
+use Test::More tests => 232;
 
 use utf8;
 
@@ -225,4 +225,8 @@ is($line, "Line 2\n", 'check the second line in the oldest archive');
 is(rename('t/rotfail.5', 't/rotfail.6'), 1, 'rotate the oldest archive but not the newer');
 $line = <$logfile>;
 is($line, "Line 3\n", 'check that the switch to the newer archive worked well');
+
+is(unlink('t/rotfail.6', 't/rotfail.4', 't/rotfail.3'), 3, 'remove all old archives');
+$line = <$logfile>;
+is($line, undef, 'check that in this case we have lost the sync');
 
