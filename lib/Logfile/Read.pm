@@ -359,31 +359,29 @@ sub _getline {
 				*$self->{data_length} = length $older_content;
 				*$self->{archive} = $older_archive;
 				goto DO_GETLINE;
-			} else {
-				# our file was not rotated
+			} elsif (defined *$self->{archive}) {
+ 				# our file was not rotated
 				# however, if our file is in fact
 				# a rotate file, we should go to the
 				# next one
-				if (defined *$self->{archive}) {
-					NEWER_ARCHIVE:
-					my $newer_archive = $self->_get_archive_newer(*$self->{archive});
-					($fh) = $self->_open($filename . ( defined $newer_archive ? $newer_archive : '' ), 0);
-					if (not defined $fh) {
-						if (defined $newer_archive) {
-							*$self->{data_array} = [ '' ];
-							*$self->{data_length} = 0;
-							*$self->{archive} = $newer_archive;
-							goto NEWER_ARCHIVE;
-						}
-						return;
+				NEWER_ARCHIVE:
+				my $newer_archive = $self->_get_archive_newer(*$self->{archive});
+				($fh) = $self->_open($filename . ( defined $newer_archive ? $newer_archive : '' ), 0);
+				if (not defined $fh) {
+					if (defined $newer_archive) {
+						*$self->{data_array} = [ '' ];
+						*$self->{data_length} = 0;
+						*$self->{archive} = $newer_archive;
+						goto NEWER_ARCHIVE;
 					}
-					*$self->{_fh}->close();
-					*$self->{_fh} = $fh;
-					*$self->{data_array} = [ '' ];
-					*$self->{data_length} = 0;
-					*$self->{archive} = $newer_archive;
-					goto DO_GETLINE;
+					return;
 				}
+				*$self->{_fh}->close();
+				*$self->{_fh} = $fh;
+				*$self->{data_array} = [ '' ];
+				*$self->{data_length} = 0;
+				*$self->{archive} = $newer_archive;
+				goto DO_GETLINE;
 			}
 			return;
 		}
