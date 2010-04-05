@@ -314,12 +314,20 @@ sub _get_archive_older {
 sub _get_archive_newer {
 	my ($self, $start) = @_;
 	my @archives = $self->_get_archives();
-	for (my $i = 0; $i < @archives; $i++) {
+	my $i = 0;
+	for ($i = 0; $i < @archives; $i++) {
 		if ($archives[$i] eq $start) {
-			return $archives[$i + 1];
+			last;
 		}
 	}
-	return @archives;
+	my $filename = *$self->{filename};
+	for ($i++; $i < (@archives + 1); $i++) {
+		my ($fh) = $self->_open($filename . ( defined $archives[$i] ? $archives[$i] : ''), 0);
+		if (defined $fh) {
+			return ($fh, $archives[$i]);
+		}
+	}
+	return;
 }
 
 sub _close_status {
@@ -364,20 +372,12 @@ sub _getline {
 				# however, if our file is in fact
 				# a rotate file, we should go to the
 				# next one
-				NEWER_ARCHIVE:
-				my $newer_archive = $self->_get_archive_newer(*$self->{archive});
-				($fh) = $self->_open($filename . ( defined $newer_archive ? $newer_archive : '' ), 0);
-				if (not defined $fh) {
-					if (defined $newer_archive) {
-						*$self->{data_array} = [ '' ];
-						*$self->{data_length} = 0;
-						*$self->{archive} = $newer_archive;
-						goto NEWER_ARCHIVE;
-					}
+				my ($newer_fh, $newer_archive) = $self->_get_archive_newer(*$self->{archive});
+				if (not defined $newer_fh) {
 					return;
 				}
 				*$self->{_fh}->close();
-				*$self->{_fh} = $fh;
+				*$self->{_fh} = $fh = $newer_fh;
 				*$self->{data_array} = [ '' ];
 				*$self->{data_length} = 0;
 				*$self->{archive} = $newer_archive;
