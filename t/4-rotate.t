@@ -1,4 +1,4 @@
-use Test::More tests => 228;
+use Test::More tests => 230;
 
 use utf8;
 
@@ -219,8 +219,10 @@ append_to_file($status_filename, 'set status file for t/rotfile, will need to wa
 ok(($logfile = new Logfile::Read('t/rotfail')),
         'open the rotfail');
 
-@lines = <$logfile>;
-is_deeply(\@lines, [
-        "Line 2\n", "Line 3\n", "Line 4\n", "Line 5\n",
-        ], 'check that we have read all lines, even if archives are bad (directory, symlink)');
+my $line = <$logfile>;
+is($line, "Line 2\n", 'check the second line in the oldest archive');
+
+is(rename('t/rotfail.5', 't/rotfail.6'), 1, 'rotate the oldest archive but not the newer');
+$line = <$logfile>;
+is($line, "Line 3\n", 'check that the switch to the newer archive worked well');
 

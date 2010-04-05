@@ -343,7 +343,23 @@ sub _getline {
 			my @fh_stat = stat($fh);
 			my $filename = *$self->{filename};
 			my @file_stat = stat($filename . ( defined *$self->{archive} ? *$self->{archive} : '' ));
-			if ("@fh_stat[0, 1]" eq "@file_stat[0, 1]") {
+			if (not @file_stat or "@fh_stat[0, 1]" ne "@file_stat[0, 1]") {
+				# our file was rotated, or generally
+				# is no longer where it was when
+				# we started to read
+				my ($older_fh, $older_archive, $older_content)
+					= $self->_get_archive_older($filename, *$self->{archive}, $fh->tell, $self->_get_current_checksum);
+				if (not defined $older_fh) {
+					# we have lost the file / sync
+					return;
+				}
+				*$self->{_fh}->close();
+				*$self->{_fh} = $fh = $older_fh;
+				*$self->{data_array} = [ $older_content ];
+				*$self->{data_length} = length $older_content;
+				*$self->{archive} = $older_archive;
+				goto DO_GETLINE;
+			} else {
 				# our file was not rotated
 				# however, if our file is in fact
 				# a rotate file, we should go to the
@@ -368,22 +384,6 @@ sub _getline {
 					*$self->{archive} = $newer_archive;
 					goto DO_GETLINE;
 				}
-			} else {
-				# our file was rotated, or generally
-				# is no longer where it was when
-				# we started to read
-				my ($older_fh, $older_archive, $older_content)
-					= $self->_get_archive_older($filename, *$self->{archive}, $fh->tell, $self->_get_current_checksum);
-				if (not defined $older_fh) {
-					# we have lost the file / sync
-					return;
-				}
-				*$self->{_fh}->close();
-				*$self->{_fh} = $fh = $older_fh;
-				*$self->{data_array} = [ $older_content ];
-				*$self->{data_length} = length $older_content;
-				*$self->{archive} = $older_archive;
-				goto DO_GETLINE;
 			}
 			return;
 		}
