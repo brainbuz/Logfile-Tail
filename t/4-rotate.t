@@ -1,4 +1,4 @@
-use Test::More tests => 232;
+use Test::More tests => 236;
 
 use utf8;
 
@@ -201,20 +201,25 @@ is_deeply(\@lines, [
         ], 'check that we have read all lines, even if archives are bad (directory, symlink)');
 
 truncate_file($status_filename, 'reset status file for t/rotfile');
-append_to_file($status_filename, 'set status file for t/rotfile, archive pointing to bad file (symlink to nonexistent file)',
+append_to_file($status_filename, 'set status file for t/rotfile, will need to walk archives',
 	"File [$CWD/t/rotfail] archive [.4] offset [7] checksum [3de22f9f20b5ff997cf08b76e7692d26e49ce7a649ea5a11ba9f835c8b7179a5]\n");
 
 ok(($logfile = new Logfile::Read('t/rotfail')),
         'open the rotfail');
 
+is(unlink('t/rotfail'), 1, 'remove the "core" t/rotfail file, let us just work with archives');
+
 @lines = <$logfile>;
 is_deeply(\@lines, [
-        "Line 2\n", "Line 3\n", "Line 4\n", "Line 5\n",
+        "Line 2\n", "Line 3\n", "Line 4\n",
         ], 'check that we have read all lines, even if archives are bad (directory, symlink)');
 
 truncate_file($status_filename, 'reset status file for t/rotfile');
-append_to_file($status_filename, 'set status file for t/rotfile, will need to walk archives',
+append_to_file($status_filename, 'set status file for t/rotfile, archive pointing to bad file (symlink to nonexistent file)',
 	"File [$CWD/t/rotfail] offset [7] checksum [3de22f9f20b5ff997cf08b76e7692d26e49ce7a649ea5a11ba9f835c8b7179a5]\n");
+
+append_to_file('t/rotfail', 'put the rotfail file back',
+        "Line 5");
 
 ok(($logfile = new Logfile::Read('t/rotfail')),
         'open the rotfail');
