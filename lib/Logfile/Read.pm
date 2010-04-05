@@ -76,9 +76,19 @@ sub open {
 	}
 
 	my ($fh, $content) = $self->_open(defined $archive ? $filename . $archive : $filename, $offset);
-	return unless defined $fh;
-
-	if (not defined $checksum) {
+	if (not defined $fh) {
+		if (not defined $archive) {
+			return;
+		}
+		my ($older_fh, $older_archive, $older_content) = $self->_get_archive_older($filename, $archive, $offset, $checksum);
+		if (defined $older_fh) {
+			$fh = $older_fh;
+			$content = $older_content;
+			$archive = $older_archive;
+		} else {
+			return;
+		}
+	} elsif (not defined $checksum) {
 		$content = $self->_seek_to($fh, 0);
 	} elsif (not defined $content
 		or $checksum ne Digest::SHA::sha256_hex($content)) {

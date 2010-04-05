@@ -1,5 +1,5 @@
 
-use Test::More tests => 23;
+use Test::More tests => 29;
 
 use Logfile::Read ();
 use Digest::SHA ();
@@ -54,6 +54,19 @@ is(($logfile1 = new Logfile::Read('t/file')), undef,
 is($warning,
 	"Status file [.logfile-read-status/$status_filename] has bad format\n",
 	'check that warning was issued');
+
+
+ok(open(TMP, '>', ".logfile-read-status/$status_filename"),
+	'clear the status file');
+ok((print TMP "File [@{[ Cwd::getcwd() ]}/t/file] archive [.3] offset [145] checksum [xxx]\n"),
+	'  put nonexistent archive to the status file');
+ok(close(TMP), '    and close it');
+
+is($warning = undef, undef, 'clear any warnings');
+is(($logfile1 = new Logfile::Read('t/file')), undef,
+	'try to open the log file when the status file point to archive which does not exists');
+is($warning, undef, 'check that no warning was issued, the file simply does not exist');
+
 
 is(system('rm', '-rf', '.logfile-read-status'), 0,
 	'remove status directory');
