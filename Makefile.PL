@@ -17,6 +17,8 @@ WriteMakefile(
 		FILES => [
 			'cover_db',
 			't/file',
+			't/rotate*',
+			't/rotfail*',
 			'.logfile-read-status',
 			'logfile-status-file',
 			'.logfile-test3',
