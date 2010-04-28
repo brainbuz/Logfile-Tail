@@ -368,7 +368,7 @@ sub _getline {
 				*$self->{archive} = $older_archive;
 				goto DO_GETLINE;
 			} elsif (defined *$self->{archive}) {
- 				# our file was not rotated
+				# our file was not rotated
 				# however, if our file is in fact
 				# a rotate file, we should go to the
 				# next one
