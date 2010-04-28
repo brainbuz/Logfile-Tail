@@ -68,7 +68,6 @@ sub open {
 
 	my ($archive, $offset, $checksum) = $self->_load_data_from_status($filename);
 	return unless defined $offset;
-	*$self->{archive} = $archive;
 
 	my $need_commit = *$self->{opts}{autocommit};
 	if (not defined $checksum) {
