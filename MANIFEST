@@ -4,7 +4,7 @@ MANIFEST
 MANIFEST.SKIP
 t/1-use.t
 t/2-read.t
-t/3-error.t
-t/4-rotate.t
+t/3-rotate.t
+t/4-error.t
 t/5-sanity.t
 t/lib.pl

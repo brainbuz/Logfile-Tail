@@ -16,7 +16,6 @@ File::Find::find(sub { push @files, $File::Find::name }, glob(".logfile*"), glob
 
 is_deeply(\@files, [
 	'.logfile-read-status',
-	(map { ".logfile-read-status/$_" } sort($status_filename_r1, $status_filename_r2, $status_filename_rf)),
 	'.logfile-test3',
 	".logfile-test3/$status_filename",
 	'logfile-status-file',
