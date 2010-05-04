@@ -79,7 +79,7 @@ sub open {
 		if (not defined $archive) {
 			return;
 		}
-		my ($older_fh, $older_archive, $older_content) = $self->_get_archive_older($archive, $offset, $checksum);
+		my ($older_fh, $older_archive, $older_content) = $self->_get_archive($archive, 'older', $offset, $checksum);
 		if (defined $older_fh) {
 			$fh = $older_fh;
 			$content = $older_content;
@@ -91,7 +91,7 @@ sub open {
 		$content = $self->_seek_to($fh, 0);
 	} elsif (not defined $content
 		or $checksum ne Digest::SHA::sha256_hex($content)) {
-		my ($older_fh, $older_archive, $older_content) = $self->_get_archive_older($archive, $offset, $checksum);
+		my ($older_fh, $older_archive, $older_content) = $self->_get_archive($archive, 'older', $offset, $checksum);
 		if (defined $older_fh) {
 			$fh->close();
 			$fh = $older_fh;
@@ -267,64 +267,59 @@ sub _get_current_checksum {
 	return $digest->hexdigest();
 }
 
-sub _get_archives {
-	my $self = shift;
+sub _get_archive {
+	my ($self, $start, $older_newer, $offset, $checksum) = @_;
+	my @types = ( '-', '.' );
+	my $start_num;
+	if (defined $start) {
+		@types = substr($start, 0, 1);
+		$start_num = substr($start, 1);
+	}
 	my $filename = *$self->{filename};
-	my @date_archives = sort grep /^-[0-9]{8}$/,
-		map { substr($_, length($filename)) }
-		glob "$filename-*";
-	return @date_archives if @date_archives;
-	my @num_archives =
-		map { ".$_" }
-		sort { $b <=> $a }
-		grep { /^[0-9]+$/ }
-		map { substr($_, length($filename) + 1) }
-		glob "$filename.*";
-	return @num_archives;
-}
-
-sub _get_archive_older {
-	my ($self, $archive, $offset, $checksum) = @_;
-	# walk older archives and check if what we have now
-	# got rotated and became older archive
-	my @archives = $self->_get_archives();
-	if (defined $archive) {
-		for (my $i = $#archives; $i >= 0; $i--) {
-			if ($archives[$i] eq $archive) {
-				splice @archives, $i;
-				last;
+	for my $t (@types) {
+		my ($cmp, $srt);
+		if ($t eq '.') {
+			if ($older_newer eq 'newer') {
+				$cmp = sub { $_[0] < $_[1] };
+				$srt = sub { $_[1] <=> $_[0] };
+			} else {
+				$cmp = sub { $_[0] > $_[1] };
+				$srt = sub { $_[0] <=> $_[1] };
+			}
+		} else {
+			if ($older_newer eq 'newer') {
+				$cmp = sub { $_[0] gt $_[1] };
+				$srt = sub { $_[0] cmp $_[1] };
+			} else {
+				# we never look at older for date because dated archives do not change after being created
+				# so in this case we are always shielded by the not defined $start_num below
+				# $cmp = sub { $_[0] lt $_[1] };
+				$srt = sub { $_[1] cmp $_[0] };
 			}
 		}
-	}
-	my $filename = *$self->{filename};
-	for (my $i = $#archives; $i >= 0; $i--) {
-		my ($fh, $content) = $self->_open($filename . $archives[$i], $offset);
-		if (not defined $fh) {
-			next;
+		my @archives = map { "$t$_" }			# make it a suffix
+			sort { $srt->($a, $b) }			# sort properly
+			grep { not defined $start_num or $cmp->($_, $start_num) }		# only newer / older
+			grep { /^[0-9]+$/ }			# only numerical suffixes
+			map { substr($_, length($filename) + 1) }	# only get the numerical suffixes
+			glob "$filename$t*";			# we look at file.1, file.2 or file-20091231, ...
+		if ($older_newer eq 'newer' and -f $filename) {
+			push @archives, '';
 		}
-		if (defined $content
-			and $checksum eq Digest::SHA::sha256_hex($content)) {
-			return ($fh, $archives[$i], $content);
-		}
-		$fh->close();
-	}
-	return;
-}
-
-sub _get_archive_newer {
-	my ($self, $start) = @_;
-	my @archives = $self->_get_archives();
-	my $i = 0;
-	for ($i = 0; $i < @archives; $i++) {
-		if ($archives[$i] eq $start) {
-			last;
-		}
-	}
-	my $filename = *$self->{filename};
-	for ($i++; $i < (@archives + 1); $i++) {
-		my ($fh) = $self->_open($filename . ( defined $archives[$i] ? $archives[$i] : ''), 0);
-		if (defined $fh) {
-			return ($fh, $archives[$i]);
+		for my $a (@archives) {
+			my ($fh, $content) = $self->_open($filename . $a, ($offset || 0));
+			if (not defined $fh) {
+				next;
+			}
+			if (defined $checksum) {
+				if (defined $content
+					and $checksum eq Digest::SHA::sha256_hex($content)) {
+					return ($fh, $a, $content);
+				}
+			} else {
+				return ($fh, ($a eq '' ? undef : $a), $content);
+			}
+			$fh->close();
 		}
 	}
 	return;
@@ -356,7 +351,7 @@ sub _getline {
 				# is no longer where it was when
 				# we started to read
 				my ($older_fh, $older_archive, $older_content)
-					= $self->_get_archive_older(*$self->{archive}, $fh->tell, $self->_get_current_checksum);
+					= $self->_get_archive(*$self->{archive}, 'older', $fh->tell, $self->_get_current_checksum);
 				if (not defined $older_fh) {
 					# we have lost the file / sync
 					return;
@@ -372,7 +367,7 @@ sub _getline {
 				# however, if our file is in fact
 				# a rotate file, we should go to the
 				# next one
-				my ($newer_fh, $newer_archive) = $self->_get_archive_newer(*$self->{archive});
+				my ($newer_fh, $newer_archive) = $self->_get_archive(*$self->{archive}, 'newer');
 				if (not defined $newer_fh) {
 					return;
 				}
