@@ -277,29 +277,23 @@ sub _get_archive {
 	}
 	my $filename = *$self->{filename};
 	for my $t (@types) {
-		my ($cmp, $srt);
+		my $srt;
 		if ($t eq '.') {
 			if ($older_newer eq 'newer') {
-				$cmp = sub { $_[0] < $_[1] };
 				$srt = sub { $_[1] <=> $_[0] };
 			} else {
-				$cmp = sub { $_[0] > $_[1] };
 				$srt = sub { $_[0] <=> $_[1] };
 			}
 		} else {
 			if ($older_newer eq 'newer') {
-				$cmp = sub { $_[0] gt $_[1] };
 				$srt = sub { $_[0] cmp $_[1] };
 			} else {
-				# we never look at older for date because dated archives do not change after being created
-				# so in this case we are always shielded by the not defined $start_num below
-				# $cmp = sub { $_[0] lt $_[1] };
 				$srt = sub { $_[1] cmp $_[0] };
 			}
 		}
 		my @archives = map { "$t$_" }			# make it a suffix
 			sort { $srt->($a, $b) }			# sort properly
-			grep { not defined $start_num or $cmp->($_, $start_num) }		# only newer / older
+			grep { not defined $start_num or $srt->($_, $start_num) == 1}		# only newer / older
 			grep { /^[0-9]+$/ }			# only numerical suffixes
 			map { substr($_, length($filename) + 1) }	# only get the numerical suffixes
 			glob "$filename$t*";			# we look at file.1, file.2 or file-20091231, ...
