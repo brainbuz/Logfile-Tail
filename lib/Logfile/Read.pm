@@ -30,7 +30,7 @@ is to explicitly save the current position:
 use strict;
 use warnings FATAL => 'all';
 
-our $VERSION = '0.4';
+our $VERSION = '0.5';
 
 use Symbol ();
 use IO::File ();
@@ -469,15 +469,11 @@ The module remembers for each file the position where it left
 out the last time, in external status file, and upon next invocation
 it seeks to the remembered position. It also stores checksum
 of 512 bytes before that position, and if the checksum does not
-match the file content the next time it is read, it assumes the
-log file was rotated / reused / truncated, and starts from
-the beginning of the file.
+match the file content the next time it is read, it will try to
+find the rotated file and read the end of it before advancing to
+newer rotated file or to the current log file.
 
-=head1 TO DO
-
-The backlog / to do list includes:
-
-* support archived / rotated files.
+Both .num and -date suffixed rotated files are supported.
 
 =head1 METHODS
 
@@ -508,8 +504,10 @@ position.
 If however checksum, which is also stored with the offset, does not
 match the current content of the file (512 bytes before the offset
 are checked), the module assumes that the file was rotated / reused
-/ truncated in the mean time since the last read, and will
-reset the offset to zero and start from the beginning of the file.
+/ truncated in the mean time since the last read. It will try to
+find the checksum among the rotated files. If no match is found,
+it will reset the offset to zero and start from the beginning of
+the file.
 
 Returns true, or undef upon error.
 
