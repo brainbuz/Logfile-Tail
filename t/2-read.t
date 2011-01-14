@@ -26,6 +26,7 @@ append_to_file('t/file', 'create file we would be reading',
 
 my $logfile1;
 ok(($logfile1 = new Logfile::Read('t/file')), 'open the file as logfile');
+is((-f $status_filename), 1, 'check that the status file was created right away');
 check_status_file($status_filename,
 	"File [t/file] offset [0] checksum [e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855]\n",
 	'check that opening the logfile for the first time initiates the status file'
@@ -35,7 +36,7 @@ ok(($line = $logfile1->getline()), 'read the first line');
 is($line, "line 1\n", '  check the line');
 check_status_file($status_filename,
 	"File [t/file] offset [0] checksum [e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855]\n",
-	'check that offset stayed the same'
+	'check that offset stayed the same as the default autocommit 1 is used'
 );
 
 ok(($line = <$logfile1>), 'read the second line');
@@ -50,7 +51,6 @@ is(scalar(@lines), 2, 'check that two lines were read');
 is_deeply(\@lines, [ "line 3\n", "line 4\n" ], '  and see what they are'); 
 
 is($logfile1->close, 1, 'close the object');
-is((-f $status_filename), 1, 'check that the status file was created');
 
 check_status_file($status_filename,
 	"File [t/file] offset [28] checksum [699793afbd9212c9a54989c189010f21d15273f850ed91de9fae78018393987f]\n",
