@@ -1,4 +1,4 @@
-use Test::More tests => 202;
+use Test::More tests => 208;
 
 use utf8;
 
@@ -260,6 +260,15 @@ check_status_file($status_filename,
 	'check that the checksum got fixed by this open'
 );
 is($logfile2->close(), 1, 'close object');
+
+
+truncate_file($status_filename, 'clear the status file and do not put any content in');
+ok(($logfile2 = new Logfile::Read('t/file')),
+        'open logfile when status file is empty');
+check_status_file($status_filename,
+	"File [t/file] offset [0] checksum [e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855]\n",
+	'check that the checksum got set by this open'
+);
 
 
 truncate_file('t/file');
