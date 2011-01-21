@@ -1,3 +1,4 @@
+bin/logfile-cat
 lib/Logfile/Read.pm
 Makefile.PL
 MANIFEST
@@ -5,6 +6,7 @@ MANIFEST.SKIP
 t/1-use.t
 t/2-read.t
 t/3-rotate.t
-t/4-error.t
-t/5-sanity.t
+t/4-script.t
+t/5-error.t
+t/6-sanity.t
 t/lib.pl

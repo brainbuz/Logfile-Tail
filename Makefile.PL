@@ -1,5 +1,5 @@
 
-use 5.008000;
+use 5.010000;
 
 use ExtUtils::MakeMaker;
 BEGIN {
@@ -13,12 +13,14 @@ WriteMakefile(
 		'Digest::SHA' => 0,
 		'Test::More' => 0,
 	},
+	EXE_FILES => [ 'bin/logfile-cat', ],
 	clean => {
 		FILES => [
 			'cover_db',
 			't/file',
 			't/rotate*',
 			't/rotfail*',
+			't/status-file2',
 			'.logfile-read-status',
 			'logfile-status-file',
 			'.logfile-test3',
