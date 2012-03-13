@@ -450,7 +450,7 @@ sub CLOSE() {
 
 sub DESTROY() {
 	my $self = shift;
-	$self->close();
+	$self->close() if defined *$self->{_fh};
 }
 
 1;
