@@ -173,6 +173,11 @@ sub _seek_to {
 sub _load_data_from_status {
 	my ($self, $log_filename) = @_;
 	my $abs_filename = Cwd::abs_path($log_filename);
+	if (not defined $abs_filename) {
+		# can we access the file at all?
+		warn "Cannot access file [$log_filename]\n";
+		return;
+	}
 	my @abs_stat = stat $abs_filename;
 	if (defined $abs_stat[1] and (stat $log_filename)[1] == $abs_stat[1]) {
 		$log_filename = $abs_filename;
