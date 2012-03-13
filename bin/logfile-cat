@@ -51,12 +51,23 @@ if (defined $status_path) {
 }
 
 my $logfile_name = shift;
+my @the_warning;
+$SIG{'__WARN__'} = sub {
+	push @the_warning, @_;
+};
+
 my $logfile = new Logfile::Read(
 	$logfile_name,
 	'r',
 	\%attr,
 ) or do {
-	warn "Error reading [$logfile_name]: $!\n";
+	if (@the_warning) {
+		s/\n(.)/$1/g for @the_warning;
+		s/\n// for @the_warning;
+		print STDERR "Error while reading [$logfile_name]: @the_warning: $!\n";
+	} else {
+		print STDERR "Error reading [$logfile_name]: $!\n";
+	}
 	exit 3;
 };
 
