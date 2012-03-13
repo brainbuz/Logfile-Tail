@@ -56,7 +56,7 @@ my $logfile = new Logfile::Read(
 	'r',
 	\%attr,
 ) or do {
-	warn "Error reading [$logfile_name]: $!\!";
+	warn "Error reading [$logfile_name]: $!\n";
 	exit 3;
 };
 
