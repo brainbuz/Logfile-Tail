@@ -8,6 +8,7 @@ BEGIN {
 
 WriteMakefile(
 	NAME => 'Logfile::Read',
+	LICENSE => 'GPLv2+ or Artistic_2',
 	VERSION_FROM => 'lib/Logfile/Read.pm',
 	PREREQ_PM => {
 		'Digest::SHA' => 0,
