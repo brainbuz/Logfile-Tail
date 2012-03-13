@@ -35,7 +35,7 @@ sub rotate_file {
 is(system('rm', '-rf', glob('t/rotate*'), '.logfile-read-status'), 0, 'remove old files');
 
 my $i = 0;
-for my $type qw( num date ) {
+for my $type (qw( num date )) {
 	$i++;
 
 	my $file = "t/rotate$i";
