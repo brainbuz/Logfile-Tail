@@ -30,7 +30,7 @@ is to explicitly save the current position:
 use strict;
 use warnings FATAL => 'all';
 
-our $VERSION = '0.6';
+our $VERSION = '0.7';
 
 use Symbol ();
 use IO::File ();
