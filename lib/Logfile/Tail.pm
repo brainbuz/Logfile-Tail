@@ -575,7 +575,7 @@ Line <$fh> in list context.
 
 =head1 AUTHOR AND LICENSE
 
-Copyright (c) 2010 Jan Pazdziora.
+Copyright (c) 2010--2012 Jan Pazdziora.
 
 Logfile::Tail is free software. You can redistribute it and/or modify
 it under the terms of either:
