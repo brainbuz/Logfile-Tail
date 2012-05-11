@@ -2,7 +2,7 @@ use Test::More tests => 236;
 
 use utf8;
 
-use Logfile::Read ();
+use Logfile::Tail ();
 use Digest::SHA ();
 use Cwd ();
 
@@ -32,14 +32,14 @@ sub rotate_file {
 	truncate_file($file, "  trucate [$file] by writing nothing");
 }
 
-is(system('rm', '-rf', glob('t/rotate*'), '.logfile-read-status'), 0, 'remove old files');
+is(system('rm', '-rf', glob('t/rotate*'), '.logfile-tail-status'), 0, 'remove old files');
 
 my $i = 0;
 for my $type (qw( num date )) {
 	$i++;
 
 	my $file = "t/rotate$i";
-	my $status_filename = '.logfile-read-status/'
+	my $status_filename = '.logfile-tail-status/'
 		. Digest::SHA::sha256_hex("$CWD/$file");
 
 	unlink $status_filename;
@@ -54,7 +54,7 @@ for my $type (qw( num date )) {
 		"line 1.1", "line 1.2");
 
 	my $logfile;
-	ok(($logfile = new Logfile::Read($file)), 'open the file as logfile');
+	ok(($logfile = new Logfile::Tail($file)), 'open the file as logfile');
 	check_status_file($status_filename,
 		"File [$file] offset [0] checksum [e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855]\n",
 		'check that opening the logfile for the first time initiates the status file'
@@ -85,7 +85,7 @@ for my $type (qw( num date )) {
 		'check that offset now points to the end of the first line'
 	);
 
-	ok(($logfile = new Logfile::Read($file)), 'open the logfile again');
+	ok(($logfile = new Logfile::Tail($file)), 'open the logfile again');
 	ok(($line = <$logfile>), 'read one line (second from the now-rotated file)');
 	is($line, "line 2.2\n", '  check the line');
 
@@ -124,7 +124,7 @@ for my $type (qw( num date )) {
 		'check that offset points to the fifth line'
 	);
 
-	ok(($logfile = new Logfile::Read($file)), 'open the logfile yet again');
+	ok(($logfile = new Logfile::Tail($file)), 'open the logfile yet again');
 	ok(($line = <$logfile>), 'read one line');
 	is($line, "line 2.6\n", '  check the line');
 
@@ -134,7 +134,7 @@ for my $type (qw( num date )) {
 		'check that status file now has archive info'
 	);
 
-	ok(($logfile = new Logfile::Read($file)), 'and open again, to see processing of status file with archive info');
+	ok(($logfile = new Logfile::Tail($file)), 'and open again, to see processing of status file with archive info');
 	ok(($line = <$logfile>), 'read one line');
 	is($line, "line 2.7\n", '  check the line');
 	is($logfile->close(), 1, 'close the file');
@@ -148,7 +148,7 @@ for my $type (qw( num date )) {
 	append_to_file($file, 'put content to log file',
 		map "line 5.$_", 1 .. 5);
 
-	ok(($logfile = new Logfile::Read($file)), 'open again, now the archive info points to file which was rotated again');
+	ok(($logfile = new Logfile::Tail($file)), 'open again, now the archive info points to file which was rotated again');
 	my @lines = $logfile->getlines();
 	is(scalar(@lines), 999, 'check number of lines we got');
 	is($lines[$#lines], "line 5.5\n", 'check the last line');
@@ -162,7 +162,7 @@ for my $type (qw( num date )) {
 	);
 }
 
-my $status_filename = '.logfile-read-status/'
+my $status_filename = '.logfile-tail-status/'
 	. Digest::SHA::sha256_hex("$CWD/t/rotfail");
 is(system('rm', '-rf', glob('t/rotfail*'), $status_filename), 0, 'remove old rotfiles');
 
@@ -180,7 +180,7 @@ append_to_file('t/rotfail.5', 'create rotfail.5',
 append_to_file($status_filename, 'set status file for t/rotfile',
 	"File [$CWD/t/rotfail] archive [.5] offset [7] checksum [3de22f9f20b5ff997cf08b76e7692d26e49ce7a649ea5a11ba9f835c8b7179a5]\n");
 
-ok(($logfile = new Logfile::Read('t/rotfail')),
+ok(($logfile = new Logfile::Tail('t/rotfail')),
         'open the rotfail');
 
 my @lines = <$logfile>;
@@ -192,7 +192,7 @@ truncate_file($status_filename, 'reset status file for t/rotfile');
 append_to_file($status_filename, 'set status file for t/rotfile, will need to find older archive',
 	"File [$CWD/t/rotfail] archive [.3] offset [7] checksum [3de22f9f20b5ff997cf08b76e7692d26e49ce7a649ea5a11ba9f835c8b7179a5]\n");
 
-ok(($logfile = new Logfile::Read('t/rotfail')),
+ok(($logfile = new Logfile::Tail('t/rotfail')),
         'open the rotfail');
 
 @lines = <$logfile>;
@@ -204,7 +204,7 @@ truncate_file($status_filename, 'reset status file for t/rotfile');
 append_to_file($status_filename, 'set status file for t/rotfile, will need to walk archives',
 	"File [$CWD/t/rotfail] archive [.4] offset [7] checksum [3de22f9f20b5ff997cf08b76e7692d26e49ce7a649ea5a11ba9f835c8b7179a5]\n");
 
-ok(($logfile = new Logfile::Read('t/rotfail')),
+ok(($logfile = new Logfile::Tail('t/rotfail')),
         'open the rotfail');
 
 is(unlink('t/rotfail'), 1, 'remove the "core" t/rotfail file, let us just work with archives');
@@ -221,7 +221,7 @@ append_to_file($status_filename, 'set status file for t/rotfile, archive pointin
 append_to_file('t/rotfail', 'put the rotfail file back',
         "Line 5");
 
-ok(($logfile = new Logfile::Read('t/rotfail')),
+ok(($logfile = new Logfile::Tail('t/rotfail')),
         'open the rotfail');
 
 my $line = <$logfile>;

@@ -1,5 +1,5 @@
 
 use Test::More tests => 1;
 
-BEGIN { use_ok( 'Logfile::Read' ); }
+BEGIN { use_ok( 'Logfile::Tail' ); }
 

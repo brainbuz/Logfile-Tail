@@ -2,7 +2,7 @@ use Test::More tests => 208;
 
 use utf8;
 
-use Logfile::Read ();
+use Logfile::Tail ();
 use Digest::SHA ();
 use Cwd ();
 
@@ -10,9 +10,9 @@ require 't/lib.pl';
 
 my $CWD = Cwd::getcwd();
 
-is(system('rm', '-rf', 't/file', '.logfile-read-status', '.logfile-test3', 'logfile-status-file'), 0, 'remove old data');
+is(system('rm', '-rf', 't/file', '.logfile-tail-status', '.logfile-test3', 'logfile-status-file'), 0, 'remove old data');
 
-my $status_filename = '.logfile-read-status/'
+my $status_filename = '.logfile-tail-status/'
 	. Digest::SHA::sha256_hex("$CWD/t/file");
 
 is((-f 't/file'), undef, 'sanity check, the log file should not exist');
@@ -25,7 +25,7 @@ append_to_file('t/file', 'create file we would be reading',
 	'line 1', 'line 2');
 
 my $logfile1;
-ok(($logfile1 = new Logfile::Read('t/file')), 'open the file as logfile');
+ok(($logfile1 = new Logfile::Tail('t/file')), 'open the file as logfile');
 is((-f $status_filename), 1, 'check that the status file was created right away');
 check_status_file($status_filename,
 	"File [t/file] offset [0] checksum [e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855]\n",
@@ -61,7 +61,7 @@ append_to_file('t/file', 'append three more lines',
 	'line 5', 'line 6', 'line 7');
 
 my $logfile2;
-ok(($logfile2 = new Logfile::Read('t/file', '<')), 'open the file as logfile');
+ok(($logfile2 = new Logfile::Tail('t/file', '<')), 'open the file as logfile');
 check_status_file($status_filename,
 	"File [t/file] offset [28] checksum [699793afbd9212c9a54989c189010f21d15273f850ed91de9fae78018393987f]\n",
 	'check that the status file did not change'
@@ -75,7 +75,7 @@ check_status_file($status_filename,
 	'undef of the logfile object should have updated the status file'
 );
 
-ok(($logfile2 = new Logfile::Read()), 'create new object without opening');
+ok(($logfile2 = new Logfile::Tail()), 'create new object without opening');
 check_status_file($status_filename,
 	"File [t/file] offset [35] checksum [52accd0d883d28202a89e2abc6e5be8ead2bcd1d583495b9753fb37e3e668943]\n",
 	'no open on logfile object left status file unchanged'
@@ -88,7 +88,7 @@ check_status_file($status_filename,
 	'close on unopened logfile should not touch the status file'
 );
 
-ok(($logfile2 = new Logfile::Read('t/file', { autocommit => 0 })),
+ok(($logfile2 = new Logfile::Tail('t/file', { autocommit => 0 })),
 	'open the file with autocommit 0');
 check_status_file($status_filename,
 	"File [t/file] offset [35] checksum [52accd0d883d28202a89e2abc6e5be8ead2bcd1d583495b9753fb37e3e668943]\n",
@@ -102,7 +102,7 @@ check_status_file($status_filename,
 	'check that no change was written to the status file'
 );
 
-ok(($logfile2 = new Logfile::Read('t/file', { autocommit => 0 })),
+ok(($logfile2 = new Logfile::Tail('t/file', { autocommit => 0 })),
 	'open the file with autocommit 0 again');
 ok(($line = $logfile2->getline()), 'read one line');
 is($line, "line 6\n", '  check the line');
@@ -118,24 +118,24 @@ check_status_file($status_filename,
 );
 
 my $logfile3;
-ok(($logfile3 = new Logfile::Read('t/file', {
+ok(($logfile3 = new Logfile::Tail('t/file', {
 	status_file => 'logfile-status-file',
 	autocommit => 2,
 	})), 'open logfile with status_file attribute and autocommit 2');
 ok(($line = <$logfile3>), 'read line from t/file');
 is($line, "line 1\n", '  should get the first one as we use different status file');
-check_status_file('.logfile-read-status/logfile-status-file',
+check_status_file('.logfile-tail-status/logfile-status-file',
 	"File [t/file] offset [7] checksum [39d031a6c1c196352ec2aea7fb3dc91ff031888b841d140bc400baa403f2d4de]\n",
 	'see custom status file updated immediately after the read'
 );
 ok((@lines = <$logfile3>), 'read remaining lines from t/file');
-check_status_file('.logfile-read-status/logfile-status-file',
+check_status_file('.logfile-tail-status/logfile-status-file',
 	"File [t/file] offset [49] checksum [6489985fca9367561507a6a4b3accccaef57cd74529916ed4a135e2bda7f0ff2]\n",
 	'see custom status file updated immediately after the read'
 );
 is((undef $logfile3), undef, 'undef the object');
 
-ok(($logfile3 = new Logfile::Read('t/file', {
+ok(($logfile3 = new Logfile::Tail('t/file', {
 	status_dir => '', status_file => 'logfile-status-file'
 	})), 'open logfile with status_file attribute, and empty status_dir');
 ok(($line = <$logfile3>), 'read line from t/file');
@@ -146,7 +146,7 @@ check_status_file('logfile-status-file',
 	'check that the custom status file was updated'
 );
 
-ok(($logfile3 = new Logfile::Read('t/file', {
+ok(($logfile3 = new Logfile::Tail('t/file', {
 	status_dir => '.', status_file => 'logfile-status-file'
 	})), 'open logfile with status_file attribute, and current status_dir');
 ok(($line = $logfile3->getline()), 'read line from t/file');
@@ -157,7 +157,7 @@ check_status_file('logfile-status-file',
 	'see that the custom status file was updated'
 );
 
-ok(($logfile3 = new Logfile::Read('t/file', {
+ok(($logfile3 = new Logfile::Tail('t/file', {
 	status_dir => '.logfile-test3',
 	})), 'open logfile with status_dir attribute');
 ok(($line = <$logfile3>), 'read line from t/file');
@@ -177,7 +177,7 @@ check_status_file($status_filename,
 	'check that no change was written to the status file since we did not commit explicitly'
 );
 
-ok(($logfile2 = new Logfile::Read('t/file')), 'open logfile, will read long line');
+ok(($logfile2 = new Logfile::Tail('t/file')), 'open logfile, will read long line');
 # we use the strange 51 here to increase the statement
 # test coverage
 append_to_file('t/file', 'append two long lines',
@@ -201,7 +201,7 @@ append_to_file('t/file', 'append four lines, one very long',
 	join(' ', ('very long line') x 1000),
 	'line x',
 );
-ok(($logfile2 = new Logfile::Read('t/file')), 'open logfile, should reset to start because t/file has changed');
+ok(($logfile2 = new Logfile::Tail('t/file')), 'open logfile, should reset to start because t/file has changed');
 check_status_file($status_filename,
 	"File [t/file] offset [0] checksum [e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855]\n",
 	'check that the offset was reset'
@@ -222,7 +222,7 @@ append_to_file('t/file', 'append ten lines',
 	map "line $_", 1 .. 10
 );
 
-ok(($logfile2 = new Logfile::Read('t/file', { autocommit => 0 })),
+ok(($logfile2 = new Logfile::Tail('t/file', { autocommit => 0 })),
 	'open logfile with file shorter than it was, and no autocommit');
 ok(($line = $logfile2->getline()), 'read one line');
 is($line, "line 1\n", '  and check line x');
@@ -234,8 +234,8 @@ check_status_file($status_filename,
 
 local *FILE;
 
-ok(tie(*FILE, 'Logfile::Read', 't/file'), 'tie glob to Logfile::Read');
-is(ref tied(*FILE), 'Logfile::Read', 'check the type');
+ok(tie(*FILE, 'Logfile::Tail', 't/file'), 'tie glob to Logfile::Tail');
+is(ref tied(*FILE), 'Logfile::Tail', 'check the type');
 check_status_file($status_filename,
 	"File [t/file] offset [0] checksum [e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855]\n",
 	'check that this tie reset the offset to zero'
@@ -253,7 +253,7 @@ truncate_file($status_filename, 'clear the status file');
 append_to_file($status_filename, 'add bogus checksum for offset 0',
 	"File [$CWD/t/file] offset [0] checksum [000]\n"
 );
-ok(($logfile2 = new Logfile::Read('t/file')),
+ok(($logfile2 = new Logfile::Tail('t/file')),
         'open logfile when status file has broken checksum for offset 0');
 check_status_file($status_filename,
 	"File [t/file] offset [0] checksum [e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855]\n",
@@ -263,7 +263,7 @@ is($logfile2->close(), 1, 'close object');
 
 
 truncate_file($status_filename, 'clear the status file and do not put any content in');
-ok(($logfile2 = new Logfile::Read('t/file')),
+ok(($logfile2 = new Logfile::Tail('t/file')),
         'open logfile when status file is empty');
 check_status_file($status_filename,
 	"File [t/file] offset [0] checksum [e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855]\n",
@@ -277,7 +277,7 @@ append_to_file('t/file', 'append lines with iso-8859-2 content',
 	"line 2: \276lu\273ou\350k\375 k\371\362",
 );
 
-ok(($logfile3 = new Logfile::Read('t/file', '<:encoding(iso-8859-2)')),
+ok(($logfile3 = new Logfile::Tail('t/file', '<:encoding(iso-8859-2)')),
 	'open the file with encoding(iso-8859-2)');
 check_status_file($status_filename,
 	"File [t/file] offset [0] checksum [e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855]\n",
@@ -300,8 +300,8 @@ no warnings;
 *Cwd::abs_path = sub { return '/' };
 }
 
-ok(($logfile3 = new Logfile::Read('t/file')), 'open logfile when abs_path is broken, returns root');
-check_status_file('.logfile-read-status/1f6245dd2a49af539a745de806a543a793a0a13316ae9c72b40d8abc671a390e',
+ok(($logfile3 = new Logfile::Tail('t/file')), 'open logfile when abs_path is broken, returns root');
+check_status_file('.logfile-tail-status/1f6245dd2a49af539a745de806a543a793a0a13316ae9c72b40d8abc671a390e',
         "File [t/file] offset [0] checksum [e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855]\n",
         'in this case, the relative file name is used',
 	1
@@ -313,8 +313,8 @@ no warnings;
 *Cwd::abs_path = sub { return '/bad/path' };
 }
 
-ok(($logfile3 = new Logfile::Read('t/file')), 'open logfile when abs_path is broken, returns nonexistent path');
-check_status_file('.logfile-read-status/1f6245dd2a49af539a745de806a543a793a0a13316ae9c72b40d8abc671a390e',
+ok(($logfile3 = new Logfile::Tail('t/file')), 'open logfile when abs_path is broken, returns nonexistent path');
+check_status_file('.logfile-tail-status/1f6245dd2a49af539a745de806a543a793a0a13316ae9c72b40d8abc671a390e',
         "File [t/file] offset [0] checksum [e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855]\n",
         'in this case, the relative file name is used',
 	1

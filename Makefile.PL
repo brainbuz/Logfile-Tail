@@ -7,9 +7,9 @@ BEGIN {
 }
 
 WriteMakefile(
-	NAME => 'Logfile::Read',
+	NAME => 'Logfile::Tail',
 	LICENSE => 'GPLv2+ or Artistic_2',
-	VERSION_FROM => 'lib/Logfile/Read.pm',
+	VERSION_FROM => 'lib/Logfile/Tail.pm',
 	PREREQ_PM => {
 		'Digest::SHA' => 0,
 		'Test::More' => 0,
@@ -22,7 +22,7 @@ WriteMakefile(
 			't/rotate*',
 			't/rotfail*',
 			't/status-file2',
-			'.logfile-read-status',
+			'.logfile-tail-status',
 			'logfile-status-file',
 			'.logfile-test3',
 		],

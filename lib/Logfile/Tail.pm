@@ -1,26 +1,26 @@
 
-package Logfile::Read;
+package Logfile::Tail;
 
 =head1 NAME
 
-Logfile::Read - read log files
+Logfile::Tail - read log files
 
 =head1 SYNOPSIS
 
-	use Logfile::Read ();
-	my $file = new Logfile::Read('/var/log/messages');
+	use Logfile::Tail ();
+	my $file = new Logfile::Tail('/var/log/messages');
 	while (<$file>) {
 		# process the line
 	}
 
 and later in different process
 
-	my $file = new Logfile::Read('/var/log/messages');
+	my $file = new Logfile::Tail('/var/log/messages');
 
 and continue reading where we've left out the last time. Also possible
 is to explicitly save the current position:
 
-	my $file = new Logfile::Read('/var/log/messages',
+	my $file = new Logfile::Tail('/var/log/messages',
 		{ autocommit => 0 });
 	my $line = $file->getline();
 	$file->commit();
@@ -53,7 +53,7 @@ sub new {
 	return $self;
 }
 
-my $STATUS_SUBDIR = '.logfile-read-status';
+my $STATUS_SUBDIR = '.logfile-tail-status';
 my $CHECK_LENGTH = 512;
 sub open {
 	my $self = shift;
@@ -467,7 +467,7 @@ They are generally only appended to. When parsing information from
 log files, it is important to only read each record / line once,
 both for performance and for accounting and statistics reasons.
 
-The C<Logfile::Read> provides an easy way to achieve the
+The C<Logfile::Tail> provides an easy way to achieve the
 read-just-once processing of log files.
 
 The module remembers for each file the position where it left
@@ -490,7 +490,7 @@ Both .num and -date suffixed rotated files are supported.
 
 =item new( FILENAME, IOLAYERS, [ { attributes } ] )
 
-Constructor, creates new C<Logfile::Read> object. Like C<IO::File>,
+Constructor, creates new C<Logfile::Tail> object. Like C<IO::File>,
 it passes any parameters to method C<open>; it actually creates
 an C<IO::File> handle internally.
 
@@ -502,7 +502,7 @@ Returns new object, or undef upon error.
 
 Opens the file using C<IO::File>. If the file was read before, the
 offset where the reading left out the last time is read from an
-external file in the ./.logfile-read-status directory and seek is
+external file in the ./.logfile-tail-status directory and seek is
 made to that offset, to continue reading at the last remembered
 position.
 
@@ -537,7 +537,7 @@ plus after each successful read.
 
 The attribute specifies the directory (or subdirectory of current
 directory) which is used to hold status files. By default,
-./.logfile-read-status directory is used. To store the status
+./.logfile-tail-status directory is used. To store the status
 files in the current directory, pass empty string or dot (.).
 
 =item status_file
@@ -558,7 +558,7 @@ Returns true, or undef upon error.
 =item close()
 
 Closes the internal filehandle. It stores the current position
-and checksum in an external file in the ./.logfile-read-status
+and checksum in an external file in the ./.logfile-tail-status
 directory.
 
 Returns true, or undef upon error.
@@ -577,7 +577,7 @@ Line <$fh> in list context.
 
 Copyright (c) 2010 Jan Pazdziora.
 
-Logfile::Read is free software. You can redistribute it and/or modify
+Logfile::Tail is free software. You can redistribute it and/or modify
 it under the terms of either:
 
 a) the GNU General Public License, version 2 or 3;

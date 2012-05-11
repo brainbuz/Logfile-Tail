@@ -1,11 +1,11 @@
-Name:           perl-Logfile-Read
+Name:           perl-Logfile-Tail
 Version:        0.6
 Release:        1%{?dist}
-Summary:        Read log files
+Summary:        Tail log files
 License:        GPLv2+ and Artistic 2.0
 Group:          Development/Libraries
-URL:            http://www.adelton.com/perl/Logfile-Read/
-Source0:        http://www.adelton.com/perl/Logfile-Read/Logfile-Read-%{version}.tar.gz
+URL:            http://www.adelton.com/perl/Logfile-Tail/
+Source0:        http://www.adelton.com/perl/Logfile-Tail/Logfile-Tail-%{version}.tar.gz
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildArch:      noarch
 BuildRequires:  perl(Digest::SHA)
@@ -22,7 +22,7 @@ is important to only read each record / line once, both for performance and
 for accounting and statistics reasons.
 
 %prep
-%setup -q -n Logfile-Read-%{version}
+%setup -q -n Logfile-Tail-%{version}
 
 %build
 %{__perl} Makefile.PL INSTALLDIRS=vendor

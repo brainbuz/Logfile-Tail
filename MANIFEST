@@ -1,9 +1,9 @@
 bin/logfile-cat
-lib/Logfile/Read.pm
+lib/Logfile/Tail.pm
 Makefile.PL
 MANIFEST
 MANIFEST.SKIP
-perl-Logfile-Read.spec
+perl-Logfile-Tail.spec
 t/1-use.t
 t/2-read.t
 t/3-rotate.t

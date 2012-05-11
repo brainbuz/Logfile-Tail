@@ -10,7 +10,7 @@ use strict;
 use warnings FATAL => 'all';
 
 use Getopt::Long ();
-use Logfile::Read ();
+use Logfile::Tail ();
 
 =head1 SYNOPSIS
 
@@ -56,7 +56,7 @@ $SIG{'__WARN__'} = sub {
 	push @the_warning, @_;
 };
 
-my $logfile = new Logfile::Read(
+my $logfile = new Logfile::Tail(
 	$logfile_name,
 	'r',
 	\%attr,
@@ -81,7 +81,7 @@ while (defined(my $line = $logfile->getline())) {
 
 When processing log files, you want to continue reading where you
 left out the last time. The B<logfile-read> program uses the
-B<Logfile::Read> module internally to store the position last
+B<Logfile::Tail> module internally to store the position last
 seen for the log file and retrieve it upon the subsequent
 invocation.
 
