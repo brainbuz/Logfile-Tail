@@ -12,10 +12,10 @@ if (defined $ENV{HARNESS_PERL_SWITCHES}) {
 	@opts = ( $ENV{HARNESS_PERL_SWITCHES} );
 }
 
-my $script = './blib/script/logfile-cat';
+my $script = './blib/script/logfile-tail';
 my ($pipe, $data);
 
-ok(open($pipe, '-|', $^X, @opts, $script, '-h'), 'check that logfile-cat has the -h (--help) option');
+ok(open($pipe, '-|', $^X, @opts, $script, '-h'), 'check that logfile-tail has the -h (--help) option');
 {
 local $/ = undef;
 $data = <$pipe>;
@@ -28,7 +28,7 @@ my ($in, $out, $err);
 my $pid;
 
 $err = Symbol::gensym();
-ok(($pid = IPC::Open3::open3($in, $out, $err, $^X, @opts, $script, '--badoption')), 'check logfile-cat with bad command line parameter');
+ok(($pid = IPC::Open3::open3($in, $out, $err, $^X, @opts, $script, '--badoption')), 'check logfile-tail with bad command line parameter');
 ok(close $in, 'no input');
 {
 local $/ = undef;
@@ -46,7 +46,7 @@ ok(waitpid($pid, 0), 'let the script finish');
 is($?, 256, 'the exit code should be nonzero');
 
 
-ok(($pid = IPC::Open3::open3($in, $out, $err, $^X, @opts, $script)), 'run logfile-cat with no parameter');
+ok(($pid = IPC::Open3::open3($in, $out, $err, $^X, @opts, $script)), 'run logfile-tail with no parameter');
 ok(close $in, 'no input');
 {
 local $/ = undef;
@@ -64,7 +64,7 @@ ok(waitpid($pid, 0), 'let the script finish');
 is($?, 512, 'the exit code should be nonzero');
 
 
-ok(($pid = IPC::Open3::open3($in, $out, $err, $^X, @opts, $script, 'nonexistentfile')), 'run logfile-cat with nonexistent file');
+ok(($pid = IPC::Open3::open3($in, $out, $err, $^X, @opts, $script, 'nonexistentfile')), 'run logfile-tail with nonexistent file');
 ok(close $in, 'no input');
 {
 local $/ = undef;
@@ -82,7 +82,7 @@ ok(waitpid($pid, 0), 'let the script finish');
 is($?, 768, 'the exit code should be nonzero');
 
 
-ok(($pid = IPC::Open3::open3($in, $out, $err, $^X, @opts, $script, '--status=./nonexistent/dir', 't/file')), 'run logfile-cat with bad status but good file');
+ok(($pid = IPC::Open3::open3($in, $out, $err, $^X, @opts, $script, '--status=./nonexistent/dir', 't/file')), 'run logfile-tail with bad status but good file');
 ok(close $in, 'no input');
 {
 local $/ = undef;
@@ -100,7 +100,7 @@ ok(waitpid($pid, 0), 'let the script finish');
 is($?, 768, 'the exit code should be nonzero');
 
 
-ok(open($pipe, '-|', $^X, @opts, $script, 't/file'), 'call the logfile-cat script on t/file');
+ok(open($pipe, '-|', $^X, @opts, $script, 't/file'), 'call the logfile-tail script on t/file');
 is($data = scalar <$pipe>, "line 1: mali\350k\375 je\276e\350ek\n", 'read the first line');
 is($data = scalar <$pipe>, "line 2: \276lu\273ou\350k\375 k\371\362\n", 'read the second line');
 is($data = scalar <$pipe>, undef, 'no more data');
@@ -111,7 +111,7 @@ append_to_file('t/file', 'append two more lines',
 	'line 3', 'line 4');
 
 
-ok(open($pipe, '-|', $^X, @opts, $script, 't/file'), 'call the logfile-cat script on t/file again, after two lines were appended');
+ok(open($pipe, '-|', $^X, @opts, $script, 't/file'), 'call the logfile-tail script on t/file again, after two lines were appended');
 is($data = scalar <$pipe>, "line 3\n", 'read the third line');
 is($data = scalar <$pipe>, "line 4\n", 'read the fourth line');
 is($data = scalar <$pipe>, undef, 'and that is it, no more data');
@@ -124,7 +124,7 @@ unlink 't/status-file2';
 ok(open(TOUCH, '>', 't/status-file2'), 'create status file');
 close TOUCH;
 
-ok(open($pipe, '-|', $^X, @opts, $script, '--status=t/status-file2', 't/file'), 'call logfile-cat on t/file, now with status file');
+ok(open($pipe, '-|', $^X, @opts, $script, '--status=t/status-file2', 't/file'), 'call logfile-tail on t/file, now with status file');
 is($data = scalar <$pipe>, "line 1: mali\350k\375 je\276e\350ek\n", 'read the first line');
 is($data = scalar <$pipe>, "line 2: \276lu\273ou\350k\375 k\371\362\n", 'read the second line');
 is($data = scalar <$pipe>, "line 3\n", 'read the third line');
@@ -145,7 +145,7 @@ ok(open(TOUCH, '>', 't/status-file2'), 'create status file');
 close TOUCH;
 
 my $cwd = Cwd::getcwd();
-ok(open($pipe, '-|', $^X, @opts, $script, "--status=$cwd/t/status-file2", 't/file'), 'call logfile-cat on t/file, now with status file as absolute path');
+ok(open($pipe, '-|', $^X, @opts, $script, "--status=$cwd/t/status-file2", 't/file'), 'call logfile-tail on t/file, now with status file as absolute path');
 is($data = scalar <$pipe>, "line 1: mali\350k\375 je\276e\350ek\n", 'read the first line');
 is($data = scalar <$pipe>, "line 2: \276lu\273ou\350k\375 k\371\362\n", 'read the second line');
 is($data = scalar <$pipe>, "line 3\n", 'read the third line');

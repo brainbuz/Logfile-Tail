@@ -2,7 +2,7 @@
 
 =head1 NAME
 
-logfile-cat - output (cat) file from the last saved position
+logfile-tail - output (cat) file from the last saved position
 
 =cut
 
@@ -14,8 +14,8 @@ use Logfile::Tail ();
 
 =head1 SYNOPSIS
 
-    logfile-cat [ --status=status-directory | --status=status-file ] logfile
-    logfile-cat --help
+    logfile-tail [ --status=status-directory | --status=status-file ] logfile
+    logfile-tail --help
 
 =cut
 
@@ -80,7 +80,7 @@ while (defined(my $line = $logfile->getline())) {
 =head1 DESCRIPTION
 
 When processing log files, you want to continue reading where you
-left out the last time. The B<logfile-read> program uses the
+left out the last time. The B<logfile-tail> program uses the
 B<Logfile::Tail> module internally to store the position last
 seen for the log file and retrieve it upon the subsequent
 invocation.
@@ -113,9 +113,9 @@ Short usage is printed.
 =head1 EXAMPLES
 
     # output data from Apache's access_log
-    logfile-read /var/log/httpd/access_log
+    logfile-tail /var/log/httpd/access_log
 
-    logfile-read --status /var/run/apache/logfile-read error_log
+    logfile-tail --status /var/run/apache/logfile-tail error_log
 
 =head1 AUTHOR
 

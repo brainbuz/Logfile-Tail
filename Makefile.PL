@@ -14,7 +14,7 @@ WriteMakefile(
 		'Digest::SHA' => 0,
 		'Test::More' => 0,
 	},
-	EXE_FILES => [ 'bin/logfile-cat', ],
+	EXE_FILES => [ 'bin/logfile-tail', ],
 	clean => {
 		FILES => [
 			'cover_db',

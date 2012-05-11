@@ -46,7 +46,7 @@ rm -rf $RPM_BUILD_ROOT
 
 %files
 %defattr(-,root,root,-)
-%{_bindir}/logfile-cat
+%{_bindir}/logfile-tail
 %doc
 %{perl_vendorlib}/*
 %{_mandir}/man1/*
