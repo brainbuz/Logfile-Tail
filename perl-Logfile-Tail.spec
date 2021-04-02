@@ -8,6 +8,9 @@ URL:            http://www.adelton.com/perl/Logfile-Tail/
 Source0:        http://www.adelton.com/perl/Logfile-Tail/Logfile-Tail-%{version}.tar.gz
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildArch:      noarch
+BuildRequires:  make
+BuildRequires:  perl-generators
+BuildRequires:  perl-interpreter
 BuildRequires:  perl(Digest::SHA)
 BuildRequires:  perl(ExtUtils::MakeMaker)
 BuildRequires:  perl(Test::More)
