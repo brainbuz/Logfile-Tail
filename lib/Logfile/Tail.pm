@@ -1,4 +1,3 @@
-
 package Logfile::Tail;
 
 =head1 NAME
@@ -30,7 +29,7 @@ is to explicitly save the current position:
 use strict;
 use warnings FATAL => 'all';
 
-our $VERSION = '0.7';
+our $VERSION = '0.8';
 
 use Symbol ();
 use IO::File ();
@@ -575,7 +574,7 @@ Line <$fh> in list context.
 
 =head1 AUTHOR AND LICENSE
 
-Copyright (c) 2010--2012 Jan Pazdziora.
+Copyright (c) 2010--2021 Jan Pazdziora.
 
 Logfile::Tail is free software. You can redistribute it and/or modify
 it under the terms of either:

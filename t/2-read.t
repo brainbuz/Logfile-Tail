@@ -6,7 +6,7 @@ use Logfile::Tail ();
 use Digest::SHA ();
 use Cwd ();
 
-require 't/lib.pl';
+require './t/lib.pl';
 
 my $CWD = Cwd::getcwd();
 
@@ -48,7 +48,7 @@ append_to_file('t/file', 'append two lines',
 
 my @lines = <$logfile1>;
 is(scalar(@lines), 2, 'check that two lines were read');
-is_deeply(\@lines, [ "line 3\n", "line 4\n" ], '  and see what they are'); 
+is_deeply(\@lines, [ "line 3\n", "line 4\n" ], '  and see what they are');
 
 is($logfile1->close, 1, 'close the object');
 

@@ -8,7 +8,7 @@ use Cwd ();
 
 my $CWD = Cwd::getcwd();
 
-require 't/lib.pl';
+require './t/lib.pl';
 
 my $DATE = '20100101';
 sub rotate_file {
