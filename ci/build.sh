@@ -12,6 +12,10 @@ if type dnf 2> /dev/null ; then
 	BUILDDEP='dnf builddep'
 fi
 
+curl -fsSL --compressed https://git.io/cpm > cpm
+chmod +x cpm
+cpm install -g --no-test --show-build-log-on-failure --cpanfile cpanfile
+
 $DNF install -y rpm-build "$BUILDDEP_PROVIDER"
 $BUILDDEP -y perl-Logfile-Tail.spec
 mkdir -p ~/rpmbuild/SOURCES
