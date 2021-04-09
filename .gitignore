@@ -1,0 +1,7 @@
+t/rot*
+.logfile-tail-status
+.logfile-test3/
+logfile-status-file
+t/file
+t/status-file2
+Makefile.old

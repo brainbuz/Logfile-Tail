@@ -16,6 +16,8 @@ WriteMakefile(
 	PREREQ_PM => {
 		'Digest::SHA' => 0,
 		'Test::More' => 0,
+		'Devel::AssertOS' => 0,
+		'File::Spec' => 0,
 	},
 	EXE_FILES => [  ],
 	clean => {
