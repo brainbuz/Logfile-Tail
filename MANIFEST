@@ -1,4 +1,3 @@
-bin/logfile-tail
 lib/Logfile/Tail.pm
 Makefile.PL
 MANIFEST

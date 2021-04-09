@@ -1,7 +1,10 @@
 
-use 5.010000;
+use 5.008;
 
 use ExtUtils::MakeMaker;
+
+use Devel::AssertOS qw( -MSWin32 -Cigwin);
+
 BEGIN {
 	eval 'use ExtUtils::MakeMaker::Coverage';
 }
@@ -14,7 +17,7 @@ WriteMakefile(
 		'Digest::SHA' => 0,
 		'Test::More' => 0,
 	},
-	EXE_FILES => [ 'bin/logfile-tail', ],
+	EXE_FILES => [  ],
 	clean => {
 		FILES => [
 			'cover_db',
