@@ -17,6 +17,7 @@ WriteMakefile(
 		'Digest::SHA' => 0,
 		'Test::More' => 0,
 		'Devel::CheckOS' => 1.85,
+		'Devel::AssertOS' => 1.21,
 		'File::Spec' => 0,
 	},
 	EXE_FILES => [  ],
