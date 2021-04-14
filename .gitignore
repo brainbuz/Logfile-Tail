@@ -5,3 +5,5 @@ logfile-status-file
 t/file
 t/status-file2
 Makefile.old
+MYMETA*
+Makefile

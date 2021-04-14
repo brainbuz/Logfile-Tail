@@ -1,5 +1,7 @@
 package Logfile::Tail;
 
+# ABSTRACT: Tails log files with the ability to
+
 =head1 NAME
 
 Logfile::Tail - read log files
@@ -29,7 +31,7 @@ is to explicitly save the current position:
 use strict;
 use warnings FATAL => 'all';
 
-our $VERSION = '0.7001_02';
+our $VERSION = '0.7001_03';
 
 use Symbol ();
 use IO::File ();

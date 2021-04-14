@@ -3,21 +3,20 @@ use 5.008;
 
 use ExtUtils::MakeMaker;
 
-use Devel::AssertOS qw( -MSWin32 -Cigwin);
-
 BEGIN {
+  if ( $^O =~ /^MSWin32$|^cygwin$/i) {
+    die "Unsupported OS!\n";
+  }
 	eval 'use ExtUtils::MakeMaker::Coverage';
 }
 
 WriteMakefile(
 	NAME => 'Logfile::Tail',
-	LICENSE => 'GPLv2+ or Artistic_2',
+  LICENSE => 'perl',
 	VERSION_FROM => 'lib/Logfile/Tail.pm',
 	PREREQ_PM => {
 		'Digest::SHA' => 0,
 		'Test::More' => 0,
-		'Devel::CheckOS' => 1.85,
-		'Devel::AssertOS' => 1.21,
 		'File::Spec' => 0,
 	},
 	EXE_FILES => [  ],
